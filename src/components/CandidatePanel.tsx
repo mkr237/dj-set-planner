@@ -45,7 +45,7 @@ function ToggleGroup<T extends string>({
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`px-2 py-0.5 text-xs transition-colors ${
+          className={`px-2 py-0.5 text-xs transition-colors duration-100 ${
             value === opt.value
               ? 'bg-accent text-white'
               : 'text-slate-400 hover:text-white hover:bg-surface-3'
@@ -76,7 +76,7 @@ function CandidateRow({
   return (
     <button
       onClick={() => onAdd(track.id)}
-      className={`w-full text-left flex items-stretch border-b border-border/50 border-l-4 ${colors.border} ${colors.row} transition-colors`}
+      className={`w-full text-left flex items-stretch border-b border-border/50 border-l-4 ${colors.border} ${colors.row} transition-colors duration-150 active:opacity-70 active:scale-[0.995]`}
     >
       {/* Tier badge */}
       <div className="flex items-center px-3 py-3">
@@ -140,74 +140,73 @@ export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
 
   return (
     <div className="flex flex-col min-h-0 bg-surface-0">
-      {/* Header: current track + overrides */}
-      <div className="px-6 py-3 border-b border-border bg-surface-1 shrink-0 space-y-2">
-        <div>
-          <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-0.5">
-            What's next after
-          </p>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-white truncate">{currentTrack.title}</span>
-            <span className="text-xs text-slate-500 shrink-0 font-mono">
-              {currentTrack.key} · {currentTrack.bpm} BPM · {currentTrack.energy}
-            </span>
-          </div>
-        </div>
-
-        {/* Per-step override controls */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500">Energy</span>
-            <ToggleGroup<EnergyDirection>
-              value={energyDirection}
-              onChange={setEnergyDirection}
-              options={[
-                { value: 'any',      label: 'Any'      },
-                { value: 'maintain', label: 'Maintain' },
-                { value: 'build',    label: 'Build ↑'  },
-                { value: 'drop',     label: 'Drop ↓'   },
-              ]}
-            />
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500">BPM</span>
-            <input
-              type="range"
-              min={1}
-              max={20}
-              value={effectiveBpm}
-              onChange={e => setBpmOverride(Number(e.target.value))}
-              className="w-20 accent-accent"
-            />
-            <span className={`text-xs font-mono w-5 ${bpmOverride !== null ? 'text-accent-hover' : 'text-slate-500'}`}>
-              ±{effectiveBpm}
-            </span>
-            {bpmOverride !== null && (
-              <button onClick={() => setBpmOverride(null)} className="text-xs text-slate-600 hover:text-slate-400">↺</button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-500">Tier</span>
-            <ToggleGroup<string>
-              value={String(effectiveTier)}
-              onChange={v => setTierOverride(Number(v) === constraints.maxCamelotTier ? null : Number(v))}
-              options={[1, 2, 3, 4].map(t => ({ value: String(t), label: `T${t}` }))}
-            />
-            {tierOverride !== null && (
-              <button onClick={() => setTierOverride(null)} className="text-xs text-slate-600 hover:text-slate-400">↺</button>
-            )}
-          </div>
+      {/* Header: current track */}
+      <div className="px-4 py-2.5 border-b border-border bg-surface-1 shrink-0">
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-0.5">
+          What's next after
+        </p>
+        <div className="flex items-baseline gap-2 min-w-0">
+          <span className="text-sm font-semibold text-white truncate">{currentTrack.title}</span>
+          <span className="text-xs text-slate-500 shrink-0 font-mono">
+            {currentTrack.key} · {currentTrack.bpm} BPM · {currentTrack.energy}
+          </span>
         </div>
       </div>
 
-      {/* Candidate count */}
-      {candidates.length > 0 && (
-        <div className="px-6 py-1.5 border-b border-border/50 bg-surface-1">
-          <span className="text-xs text-slate-500">{candidates.length} candidate{candidates.length !== 1 ? 's' : ''}</span>
+      {/* Override controls + candidate count */}
+      <div className="px-4 py-2 border-b border-border bg-surface-1 shrink-0 flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">Energy</span>
+          <ToggleGroup<EnergyDirection>
+            value={energyDirection}
+            onChange={setEnergyDirection}
+            options={[
+              { value: 'any',      label: 'Any'  },
+              { value: 'maintain', label: '='    },
+              { value: 'build',    label: '↑'    },
+              { value: 'drop',     label: '↓'    },
+            ]}
+          />
         </div>
-      )}
+
+        <div className="w-px h-3.5 bg-border shrink-0" />
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">BPM</span>
+          <input
+            type="range"
+            min={1}
+            max={20}
+            value={effectiveBpm}
+            onChange={e => setBpmOverride(Number(e.target.value))}
+            className="w-20 accent-accent"
+          />
+          <span className={`text-xs font-mono w-5 ${bpmOverride !== null ? 'text-accent-hover' : 'text-slate-500'}`}>
+            ±{effectiveBpm}
+          </span>
+          {bpmOverride !== null && (
+            <button onClick={() => setBpmOverride(null)} className="text-xs text-slate-600 hover:text-slate-400">↺</button>
+          )}
+        </div>
+
+        <div className="w-px h-3.5 bg-border shrink-0" />
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">Tier</span>
+          <ToggleGroup<string>
+            value={String(effectiveTier)}
+            onChange={v => setTierOverride(Number(v) === constraints.maxCamelotTier ? null : Number(v))}
+            options={[1, 2, 3, 4].map(t => ({ value: String(t), label: `T${t}` }))}
+          />
+          {tierOverride !== null && (
+            <button onClick={() => setTierOverride(null)} className="text-xs text-slate-600 hover:text-slate-400">↺</button>
+          )}
+        </div>
+
+        <span className="ml-auto text-xs text-slate-600 shrink-0">
+          {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+        </span>
+      </div>
 
       {/* Candidate list */}
       {candidates.length === 0 ? (

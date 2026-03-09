@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { getCamelotTier } from '../utils/camelot'
 import { TIER_COLORS } from '../utils/tierColors'
@@ -61,7 +61,7 @@ function TimelineTrack({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`flex items-center gap-2 px-4 py-2.5 border-b border-border/50 group transition-colors cursor-grab active:cursor-grabbing select-none ${
+      className={`flex items-center gap-2 px-4 py-2.5 border-b border-border/50 group transition-colors duration-150 cursor-grab active:cursor-grabbing select-none ${
         isDragging   ? 'opacity-30' : ''
       } ${isDropTarget ? 'border-t-2 border-t-accent' : ''} ${
         !isDragging  ? 'hover:bg-surface-3' : ''
@@ -96,7 +96,7 @@ function TimelineTrack({
       <button
         onClick={onRemove}
         title="Remove from set"
-        className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-700 hover:text-red-400 hover:bg-surface-2 opacity-0 group-hover:opacity-100 transition-all text-base leading-none"
+        className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-700 hover:text-red-400 hover:bg-surface-2 opacity-0 group-hover:opacity-100 transition-all duration-150 text-base leading-none"
       >
         ×
       </button>
@@ -116,14 +116,30 @@ export function SetTimeline() {
 
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Smooth-scroll to the bottom when a new track is appended
+  const trackCount = currentSet?.tracks.length ?? 0
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }, [trackCount])
 
   if (!currentSet || currentSet.tracks.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-8">
-        <p className="text-slate-400 font-medium">No tracks in this set yet</p>
-        <p className="text-sm text-slate-600">
-          Pick a starting track from the panel on the right
-        </p>
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8">
+        <div className="text-4xl text-slate-700 select-none leading-none">♪</div>
+        <div>
+          <p className="text-slate-400 font-medium text-sm">No tracks yet</p>
+          <p className="text-xs text-slate-600 mt-1">
+            Pick a starting track from the right panel
+          </p>
+        </div>
+        <div className="flex items-center gap-1 text-slate-700 text-xs select-none">
+          <span className="w-8 h-px bg-slate-700" />
+          <span>→</span>
+        </div>
       </div>
     )
   }
@@ -162,7 +178,7 @@ export function SetTimeline() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto">
       {resolvedTracks.map(({ setTrack, track }, index) => (
         <div key={setTrack.trackId}>
           {index > 0 && resolvedTracks[index - 1].track && (

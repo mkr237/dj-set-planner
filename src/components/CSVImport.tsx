@@ -2,6 +2,26 @@ import { useRef, useState } from 'react'
 import { parseCSV, type ImportError } from '../utils/csvImport'
 import { useAppContext } from '../context/AppContext'
 
+function UploadIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+      <path d="M12 12v9" />
+      <path d="m8 17 4-4 4 4" />
+    </svg>
+  )
+}
+
 export function CSVImport() {
   const { dispatch } = useAppContext()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -54,17 +74,30 @@ export function CSVImport() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`w-full max-w-sm rounded-xl border-2 border-dashed p-10 flex flex-col items-center gap-4 transition-all ${
+        className={`w-full max-w-sm rounded-2xl border-2 border-dashed p-12 flex flex-col items-center gap-5 transition-all duration-300 ${
           dragging
-            ? 'border-accent bg-accent-muted scale-[1.01]'
-            : 'border-border hover:border-slate-500'
+            ? 'border-accent bg-accent-muted scale-[1.02]'
+            : 'border-border hover:border-slate-500 hover:bg-surface-1'
         }`}
       >
-        <div className="text-5xl text-slate-700 select-none leading-none">♫</div>
+        {/* Animated icon */}
+        <div
+          className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+            dragging ? 'bg-accent/20 text-accent-hover scale-110' : 'bg-surface-2 text-slate-500'
+          }`}
+          style={{ animation: dragging ? 'none' : 'float 3s ease-in-out infinite' }}
+        >
+          <UploadIcon />
+        </div>
 
-        <div className="text-center">
-          <p className="text-slate-300 font-medium">Drop a CSV to get started</p>
-          <p className="text-sm text-slate-600 mt-1">or browse for a file</p>
+        {/* Messaging */}
+        <div className="text-center space-y-1">
+          <p className={`font-semibold transition-colors duration-200 ${dragging ? 'text-accent-hover' : 'text-white'}`}>
+            {dragging ? 'Release to import' : 'Drop your track library here'}
+          </p>
+          <p className="text-sm text-slate-500">
+            {dragging ? 'CSV file detected' : 'Drag a CSV file or browse to import'}
+          </p>
         </div>
 
         <input
@@ -77,16 +110,21 @@ export function CSVImport() {
 
         <button
           onClick={() => inputRef.current?.click()}
-          className="px-5 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium transition-colors text-white"
+          className="px-6 py-2 bg-accent hover:bg-accent-hover active:scale-95 rounded-lg text-sm font-medium transition-all duration-150 text-white"
         >
           Browse for file
         </button>
 
-        <p className="text-xs text-slate-600 text-center">
-          Required columns: title, artist, bpm, key, energy
-        </p>
+        {/* Required columns */}
+        <div className="w-full border-t border-border/50 pt-4 space-y-1.5 text-center">
+          <p className="text-xs text-slate-600 uppercase tracking-wider font-semibold">Required columns</p>
+          <p className="text-xs text-slate-700 font-mono tracking-wide">
+            title · artist · bpm · key · energy
+          </p>
+        </div>
       </div>
 
+      {/* Import result */}
       {importedCount !== null && (
         <div className="mt-6 w-full max-w-sm space-y-1">
           {importedCount > 0 && (

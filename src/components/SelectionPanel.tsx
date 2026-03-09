@@ -11,7 +11,7 @@ function TrackRow({ track, onAdd }: { track: Track; onAdd: (id: string) => void 
   return (
     <button
       onClick={() => onAdd(track.id)}
-      className="w-full text-left flex items-center gap-3 px-6 py-3 border-b border-border/50 hover:bg-surface-3 transition-colors group"
+      className="w-full text-left flex items-center gap-3 px-4 py-2.5 border-b border-border/50 hover:bg-surface-3 transition-colors duration-150 active:opacity-70 group"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
@@ -26,7 +26,7 @@ function TrackRow({ track, onAdd }: { track: Track; onAdd: (id: string) => void 
           </div>
         </div>
       </div>
-      <span className="shrink-0 text-slate-700 group-hover:text-accent-hover transition-colors font-mono">
+      <span className="shrink-0 text-slate-700 group-hover:text-accent-hover transition-colors duration-150 font-mono">
         +
       </span>
     </button>
@@ -43,11 +43,11 @@ function FullLibraryView() {
 
   return (
     <div className="flex flex-col h-full bg-surface-0">
-      <div className="px-6 py-3 border-b border-border bg-surface-1 shrink-0">
+      <div className="px-4 py-2.5 border-b border-border bg-surface-1 shrink-0">
         <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
           Select your first track
         </p>
-        <p className="text-xs text-slate-600 mt-0.5">{tracks.length} tracks in library</p>
+        <p className="text-xs text-slate-600 mt-0.5">{tracks.length} track{tracks.length !== 1 ? 's' : ''} in library</p>
       </div>
       <div className="flex-1 overflow-y-auto">
         {tracks.map(track => (
@@ -79,7 +79,7 @@ export function SelectionPanel() {
   const setIsEmpty = !currentSet || currentSet.tracks.length === 0
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden border-l border-border">
+    <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {hasNoTracks && <CSVImport />}
       {!hasNoTracks && setIsEmpty && <FullLibraryView />}
       {!hasNoTracks && !setIsEmpty && currentTrack && (
