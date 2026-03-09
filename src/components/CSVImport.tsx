@@ -36,7 +36,6 @@ export function CSVImport() {
   }
 
   function handleDragLeave(e: React.DragEvent) {
-    // Only clear if leaving the zone entirely (not entering a child)
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setDragging(false)
     }
@@ -50,23 +49,22 @@ export function CSVImport() {
   }
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8">
-      {/* Drop zone */}
+    <div className="flex-1 flex flex-col items-center justify-center p-8 bg-surface-0">
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`w-full max-w-sm rounded-xl border-2 border-dashed p-10 flex flex-col items-center gap-4 transition-colors ${
+        className={`w-full max-w-sm rounded-xl border-2 border-dashed p-10 flex flex-col items-center gap-4 transition-all ${
           dragging
-            ? 'border-indigo-400 bg-indigo-950/40'
-            : 'border-gray-600 hover:border-gray-500'
+            ? 'border-accent bg-accent-muted scale-[1.01]'
+            : 'border-border hover:border-slate-500'
         }`}
       >
-        <div className="text-4xl text-gray-600 select-none">♫</div>
+        <div className="text-5xl text-slate-700 select-none leading-none">♫</div>
 
         <div className="text-center">
-          <p className="text-gray-300 font-medium">Drop a CSV to get started</p>
-          <p className="text-sm text-gray-500 mt-1">or</p>
+          <p className="text-slate-300 font-medium">Drop a CSV to get started</p>
+          <p className="text-sm text-slate-600 mt-1">or browse for a file</p>
         </div>
 
         <input
@@ -79,22 +77,21 @@ export function CSVImport() {
 
         <button
           onClick={() => inputRef.current?.click()}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium transition-colors"
+          className="px-5 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium transition-colors text-white"
         >
           Browse for file
         </button>
 
-        <p className="text-xs text-gray-600 text-center">
+        <p className="text-xs text-slate-600 text-center">
           Required columns: title, artist, bpm, key, energy
         </p>
       </div>
 
-      {/* Feedback */}
       {importedCount !== null && (
         <div className="mt-6 w-full max-w-sm space-y-1">
           {importedCount > 0 && (
             <p className="text-sm text-green-400 text-center">
-              {importedCount} track{importedCount !== 1 ? 's' : ''} imported
+              ✓ {importedCount} track{importedCount !== 1 ? 's' : ''} imported
             </p>
           )}
           {errors.length > 0 && (
@@ -102,9 +99,9 @@ export function CSVImport() {
               <p className="text-sm text-red-400 text-center">
                 {errors.length} row{errors.length !== 1 ? 's' : ''} skipped
               </p>
-              <ul className="text-xs text-red-300 space-y-0.5 max-h-32 overflow-y-auto bg-gray-800/60 rounded p-2">
+              <ul className="text-xs text-red-300 space-y-0.5 max-h-32 overflow-y-auto bg-surface-2 rounded-lg p-3">
                 {errors.map((err, i) => (
-                  <li key={i}>Row {err.row}: {err.message}</li>
+                  <li key={i} className="font-mono">Row {err.row}: {err.message}</li>
                 ))}
               </ul>
             </>

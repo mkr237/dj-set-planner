@@ -14,21 +14,23 @@ function TransitionBadge({ from, to }: { from: Track; to: Track }) {
   const bpmDelta = Math.abs(to.bpm - from.bpm)
 
   return (
-    <div className="flex items-center gap-2 px-6 py-1">
-      <div className="w-5 shrink-0" />
-      <div className="flex items-center gap-2 text-xs text-gray-600">
-        <span className={`font-mono font-semibold px-1.5 py-0.5 rounded text-xs ${colors.badge}`}>
+    <div className={`flex items-center gap-2 px-4 py-1 border-l-4 ${colors.border} border-b border-border/30 bg-surface-0`}>
+      <div className="w-4 shrink-0" />
+      <div className="flex items-center gap-2 text-xs">
+        <span className={`font-mono font-bold px-1.5 py-0.5 rounded ${colors.badge}`}>
           {colors.label}
         </span>
-        <span>{from.key} → {to.key}</span>
-        {bpmDelta > 0 && <span>±{bpmDelta} BPM</span>}
+        <span className="text-slate-500 font-mono">{from.key} → {to.key}</span>
+        {bpmDelta > 0 && (
+          <span className="text-slate-600 font-mono">±{bpmDelta} BPM</span>
+        )}
       </div>
     </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Individual track row with drag handle and remove button
+// Individual track row
 // ---------------------------------------------------------------------------
 
 function TimelineTrack({
@@ -59,33 +61,33 @@ function TimelineTrack({
       onDragOver={onDragOver}
       onDrop={onDrop}
       onDragEnd={onDragEnd}
-      className={`flex items-center gap-2 px-4 py-3 border-b border-gray-700/50 group transition-colors cursor-grab active:cursor-grabbing ${
-        isDragging ? 'opacity-40 bg-gray-700/30' : ''
-      } ${isDropTarget ? 'border-t-2 border-t-indigo-500' : ''} ${
-        !isDragging ? 'hover:bg-gray-700/30' : ''
+      className={`flex items-center gap-2 px-4 py-2.5 border-b border-border/50 group transition-colors cursor-grab active:cursor-grabbing select-none ${
+        isDragging   ? 'opacity-30' : ''
+      } ${isDropTarget ? 'border-t-2 border-t-accent' : ''} ${
+        !isDragging  ? 'hover:bg-surface-3' : ''
       }`}
     >
       {/* Drag handle */}
-      <span className="text-gray-600 group-hover:text-gray-400 transition-colors shrink-0 select-none text-base leading-none">
+      <span className="text-slate-700 group-hover:text-slate-500 transition-colors shrink-0 text-sm leading-none">
         ⠿
       </span>
 
       {/* Position number */}
-      <span className="text-xs font-mono text-gray-600 w-4 text-right shrink-0">
+      <span className="text-xs font-mono text-slate-600 w-4 text-right shrink-0">
         {position + 1}
       </span>
 
       {/* Track info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-medium truncate">{track.title}</span>
-          <span className="text-xs text-gray-400 shrink-0">{track.bpm} BPM</span>
+          <span className="text-sm font-medium truncate text-white">{track.title}</span>
+          <span className="text-xs text-slate-400 shrink-0 font-mono">{track.bpm} BPM</span>
         </div>
         <div className="flex items-center justify-between mt-0.5">
-          <span className="text-xs text-gray-400 truncate">{track.artist}</span>
+          <span className="text-xs text-slate-500 truncate">{track.artist}</span>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-xs font-mono text-gray-300">{track.key}</span>
-            <span className="text-xs text-gray-500">{track.energy}</span>
+            <span className="text-xs font-mono text-slate-300">{track.key}</span>
+            <span className="text-xs text-slate-500">{track.energy}</span>
           </div>
         </div>
       </div>
@@ -94,7 +96,7 @@ function TimelineTrack({
       <button
         onClick={onRemove}
         title="Remove from set"
-        className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-red-400 hover:bg-gray-700 opacity-0 group-hover:opacity-100 transition-all"
+        className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-700 hover:text-red-400 hover:bg-surface-2 opacity-0 group-hover:opacity-100 transition-all text-base leading-none"
       >
         ×
       </button>
@@ -118,9 +120,9 @@ export function SetTimeline() {
   if (!currentSet || currentSet.tracks.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-8">
-        <p className="text-gray-400 font-medium">No tracks in this set yet</p>
-        <p className="text-sm text-gray-600">
-          Pick a starting track from the library on the right
+        <p className="text-slate-400 font-medium">No tracks in this set yet</p>
+        <p className="text-sm text-slate-600">
+          Pick a starting track from the panel on the right
         </p>
       </div>
     )
@@ -143,16 +145,13 @@ export function SetTimeline() {
       setDropIndex(null)
       return
     }
-
     const reordered = [...resolvedTracks]
     const [moved] = reordered.splice(dragIndex, 1)
     reordered.splice(index, 0, moved)
-
     dispatch({
       type: 'REORDER_SET_TRACKS',
       payload: reordered.map((r, i) => ({ ...r.setTrack, position: i })),
     })
-
     setDragIndex(null)
     setDropIndex(null)
   }
@@ -166,11 +165,9 @@ export function SetTimeline() {
     <div className="flex-1 overflow-y-auto">
       {resolvedTracks.map(({ setTrack, track }, index) => (
         <div key={setTrack.trackId}>
-          {/* Transition badge between consecutive tracks */}
           {index > 0 && resolvedTracks[index - 1].track && (
             <TransitionBadge from={resolvedTracks[index - 1].track} to={track} />
           )}
-
           <TimelineTrack
             position={index}
             track={track}

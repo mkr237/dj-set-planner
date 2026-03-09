@@ -45,8 +45,8 @@ function SetRow({
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 border-b border-gray-700/50 group ${
-        isActive ? 'bg-indigo-950/40' : 'hover:bg-gray-700/30'
+      className={`flex items-center gap-3 px-4 py-3 border-b border-border/50 group ${
+        isActive ? 'bg-accent-muted' : 'hover:bg-surface-3'
       }`}
     >
       {/* Name + meta */}
@@ -58,20 +58,20 @@ function SetRow({
             onChange={e => setDraft(e.target.value)}
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
-            className="w-full bg-gray-700 border border-indigo-500 rounded px-2 py-0.5 text-sm text-white focus:outline-none"
+            className="w-full bg-surface-3 border border-accent rounded px-2 py-0.5 text-sm text-white focus:outline-none"
           />
         ) : (
           <button
             onClick={startEdit}
             title="Click to rename"
-            className={`text-sm font-medium text-left w-full truncate hover:text-indigo-400 cursor-text ${
-              isActive ? 'text-indigo-300' : 'text-white'
+            className={`text-sm font-medium text-left w-full truncate hover:text-accent-hover cursor-text ${
+              isActive ? 'text-accent-hover' : 'text-white'
             }`}
           >
             {set.name}
           </button>
         )}
-        <p className="text-xs text-gray-500 mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           {set.tracks.length} track{set.tracks.length !== 1 ? 's' : ''} · {formatDate(set.updatedAt)}
         </p>
       </div>
@@ -82,14 +82,14 @@ function SetRow({
           onClick={onLoad}
           disabled={isActive}
           title="Load set"
-          className="px-2 py-1 text-xs rounded bg-gray-700 hover:bg-indigo-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="px-2 py-1 text-xs rounded bg-surface-3 hover:bg-accent transition-colors disabled:opacity-30 disabled:cursor-not-allowed text-slate-300 hover:text-white"
         >
           Load
         </button>
         <button
           onClick={onDelete}
           title="Delete set"
-          className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:text-red-400 hover:bg-gray-700 transition-colors text-base leading-none"
+          className="w-6 h-6 flex items-center justify-center rounded text-slate-600 hover:text-red-400 hover:bg-surface-3 transition-colors text-base leading-none"
         >
           ×
         </button>
@@ -150,14 +150,14 @@ export function SavedSetsDrawer({ onClose }: { onClose: () => void }) {
       {/* Drawer panel — slides in from the right */}
       <div
         ref={drawerRef}
-        className="fixed top-0 right-0 bottom-0 z-50 w-80 bg-gray-800 border-l border-gray-700 flex flex-col shadow-2xl"
+        className="fixed top-0 right-0 bottom-0 z-50 w-80 bg-surface-2 border-l border-border flex flex-col shadow-2xl"
       >
         {/* Drawer header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-white">Saved Sets</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors text-lg leading-none"
+            className="text-slate-500 hover:text-white transition-colors text-lg leading-none"
           >
             ×
           </button>
@@ -166,7 +166,7 @@ export function SavedSetsDrawer({ onClose }: { onClose: () => void }) {
         {/* Set list */}
         {sets.length === 0 ? (
           <div className="flex-1 flex items-center justify-center px-6">
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-slate-500 text-center">
               No saved sets yet. Build a set and hit Save.
             </p>
           </div>
