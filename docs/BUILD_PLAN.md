@@ -126,22 +126,35 @@ When selecting the next track, the user can temporarily adjust:
 
 ```
 App
-├── Header (app title, mode toggle: Edit / Performance)
-├── EditMode
-│   ├── Sidebar (left)
-│   │   ├── CSVImport (file upload + parse)
-│   │   ├── ConstraintPanel (global mixing constraints)
-│   │   └── TrackLibrary (searchable/filterable global track list)
-│   └── MainPanel (right)
-│       ├── SetHeader (set name, save/load controls)
-│       ├── SetTimeline (ordered list of tracks in current set)
-│       └── CandidatePanel (filtered + ranked next-track suggestions)
+├── Header (app title, settings icon, mode toggle: Edit / Performance)
+├── EditMode (two-panel layout)
+│   ├── SetPanel (left)
+│   │   ├── SetHeader (set name, save/load controls)
+│   │   └── SetTimeline (ordered list of tracks in current set)
+│   └── SelectionPanel (right — unified track selection)
+│       ├── EmptyState (shown when no tracks loaded)
+│       │   └── CSVImport (drag-and-drop "drop a CSV to get started")
+│       ├── FullLibraryView (shown when set is empty — pick your first track)
+│       │   ├── SearchBar (text search + genre/energy/BPM filters)
+│       │   └── TrackList (full library, sortable by any column)
+│       └── CandidateView (shown when set has tracks — pick the next track)
+│           ├── ConstraintOverrides (energy direction, BPM range, tier threshold)
+│           └── RankedCandidateList (filtered + ranked, colour-coded by tier)
+├── ConstraintModal (global mixing constraints, opened via settings icon in header)
 ├── PerformanceMode
 │   ├── CurrentTrack (large display of now-playing)
 │   ├── SetProgress (visual progress through the set)
 │   └── NextTrack (large display of upcoming track)
 └── SavedSetsDrawer (list of saved sets, load/delete/rename)
 ```
+
+### SelectionPanel states
+
+The right-hand SelectionPanel adapts based on app state:
+
+1. **No tracks loaded:** Shows the CSV import empty state — a large drag-and-drop zone with a "Drop a CSV to get started" prompt and a file browse button.
+2. **Tracks loaded, set is empty:** Shows the full track library with search and filters. This is where you pick your first track. All tracks are shown unranked since there's no "current track" to compare against.
+3. **Set has one or more tracks:** Shows the candidate view — filtered and ranked suggestions for the next track based on the last track in the set, the global constraints, and any per-step overrides.
 
 ### Storage Service (abstraction layer)
 
@@ -232,17 +245,19 @@ Each phase is a self-contained milestone. Complete one before starting the next.
 | 2.2 | Candidate ranking function | "Implement rankCandidates that filters by constraints then sorts by tier and BPM delta" |
 | 2.3 | Comprehensive tests for Camelot logic | "Write tests covering all tier transitions, edge cases at 12→1 wrap, and ranking order" |
 
-### Phase 3: Core UI — Track Library & Set Building
-**Goal:** Functional (unstyled) UI for importing tracks and building a set.
+### Phase 3: Core UI — Set Building (single-panel design)
+**Goal:** Functional (unstyled) UI for importing tracks and building a set. The design uses a unified SelectionPanel (right) that adapts its content based on state, and a SetPanel (left) for the set being built.
 
 | Step | What to build | Claude Code prompt summary |
 |------|---------------|---------------------------|
 | 3.1 | App shell with React Context for state | "Create App component with context provider managing tracks, current set, and constraints" |
-| 3.2 | CSV upload component + track library list | "Build a file upload component and a scrollable track list showing all imported tracks" |
-| 3.3 | Constraint panel | "Build a panel with inputs for BPM range, max Camelot tier, and energy filter" |
-| 3.4 | Set builder panel | "Build the set timeline (right side) showing ordered tracks with an 'add first track' prompt" |
-| 3.5 | Candidate panel with filtering + colour coding | "When a track is selected, show ranked candidates with tier-based colour coding" |
-| 3.6 | Per-step constraint overrides | "Add inline controls on the candidate panel to override energy direction and BPM range" |
+| 3.2 | Two-panel layout shell | "Create the EditMode layout with SetPanel on the left and SelectionPanel on the right" |
+| 3.3 | CSV import empty state | "In the SelectionPanel, when no tracks are loaded, show a drag-and-drop zone with 'Drop a CSV to get started' prompt and a file browse button. Parse the CSV on drop/select." |
+| 3.4 | Full library view (first track selection) | "When tracks are loaded but the set is empty, show the full track library in the SelectionPanel with search and column sorting. Clicking a track adds it as the first track in the set." |
+| 3.5 | Set timeline panel | "Build the SetPanel showing the ordered list of tracks in the current set, with track metadata displayed for each entry" |
+| 3.6 | Candidate view with filtering + colour coding | "When the set has tracks, show ranked candidates in the SelectionPanel based on the last track, filtered by global constraints, colour-coded by Camelot tier" |
+| 3.7 | Per-step constraint overrides | "Add inline controls at the top of the candidate view to override energy direction, BPM range, and tier threshold" |
+| 3.8 | Global constraints modal | "Add a settings icon in the header that opens a modal for editing global mixing constraints (BPM range, max Camelot tier, energy filter)" |
 
 ### Phase 4: Set Management (Save/Load/Edit)
 **Goal:** Full CRUD for sets, persisted to localStorage.
@@ -260,9 +275,9 @@ Each phase is a self-contained milestone. Complete one before starting the next.
 | Step | What to build | Claude Code prompt summary |
 |------|---------------|---------------------------|
 | 5.1 | Dark theme + colour system | "Apply a dark theme with tier colours (green/teal/amber/red) using Tailwind" |
-| 5.2 | Layout polish (two-panel responsive) | "Refine the two-panel layout — library left, set builder right — with proper spacing" |
+| 5.2 | Layout polish (two-panel responsive) | "Refine the two-panel layout — set timeline left, selection panel right — with proper spacing and proportions" |
 | 5.3 | Micro-interactions | "Add hover states, transitions on track selection, smooth scroll in the set timeline" |
-| 5.4 | Search and filter in track library | "Add a search bar and genre/energy/BPM filters to the track library" |
+| 5.4 | Empty state polish | "Style the CSV drop zone with an icon, subtle animation, and clear messaging" |
 
 ### Phase 6: Performance Mode
 **Goal:** A simplified, high-contrast view for use at a gig.
