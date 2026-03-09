@@ -112,7 +112,7 @@ describe('parseCSV', () => {
 
   // --- Row-level validation ---
 
-  describe('invalid rows', () => {
+  describe('invalid rows — title/artist still cause skip', () => {
     it('rejects a row with a blank title', () => {
       const csv = `title,artist,bpm,key,energy\n"","Artist",120,"1A","Low"`
       const { tracks, errors } = parseCSV(csv)
@@ -126,42 +126,6 @@ describe('parseCSV', () => {
       expect(errors[0].field).toBe('artist')
     })
 
-    it('rejects a non-numeric bpm', () => {
-      const csv = `title,artist,bpm,key,energy\n"T","A","fast","1A","Low"`
-      const { errors } = parseCSV(csv)
-      expect(errors.some(e => e.field === 'bpm')).toBe(true)
-    })
-
-    it('rejects a zero bpm', () => {
-      const csv = `title,artist,bpm,key,energy\n"T","A",0,"1A","Low"`
-      const { errors } = parseCSV(csv)
-      expect(errors.some(e => e.field === 'bpm')).toBe(true)
-    })
-
-    it('rejects an invalid Camelot key', () => {
-      const csv = `title,artist,bpm,key,energy\n"T","A",120,"13A","Low"`
-      const { errors } = parseCSV(csv)
-      expect(errors.some(e => e.field === 'key')).toBe(true)
-    })
-
-    it('rejects an invalid energy level', () => {
-      const csv = `title,artist,bpm,key,energy\n"T","A",120,"1A","Extreme"`
-      const { errors } = parseCSV(csv)
-      expect(errors.some(e => e.field === 'energy')).toBe(true)
-    })
-
-    it('includes the correct 1-based row number in errors', () => {
-      const csv = `title,artist,bpm,key,energy\n"Good","A",120,"1A","Low"\n"","B",120,"1A","Low"`
-      const { errors } = parseCSV(csv)
-      expect(errors[0].row).toBe(3) // header=1, first data row=2, second=3
-    })
-
-    it('collects multiple errors from the same invalid row', () => {
-      const csv = `title,artist,bpm,key,energy\n"","",0,"bad","wrong"`
-      const { errors } = parseCSV(csv)
-      expect(errors.length).toBeGreaterThanOrEqual(4)
-    })
-
     it('skips invalid rows but still imports valid ones', () => {
       const csv = `title,artist,bpm,key,energy
 "Good","Artist",174,"4A","High"
@@ -171,6 +135,89 @@ describe('parseCSV', () => {
       expect(tracks).toHaveLength(2)
       expect(errors).toHaveLength(1)
       expect(tracks.map(t => t.title)).toEqual(['Good', 'Also Good'])
+    })
+  })
+
+  describe('graceful handling — bpm/key imported as null', () => {
+    it('imports track with null bpm when bpm is non-numeric', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A","fast","1A","Low"`
+      const { tracks, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].bpm).toBeNull()
+      expect(warnings.some(w => w.field === 'bpm')).toBe(true)
+    })
+
+    it('imports track with null bpm when bpm is zero', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A",0,"1A","Low"`
+      const { tracks, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].bpm).toBeNull()
+      expect(warnings.some(w => w.field === 'bpm')).toBe(true)
+    })
+
+    it('imports track with null bpm when bpm is empty', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A","","1A","Low"`
+      const { tracks, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].bpm).toBeNull()
+      expect(warnings.some(w => w.field === 'bpm')).toBe(true)
+    })
+
+    it('imports track with null key when key is invalid', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A",120,"13A","Low"`
+      const { tracks, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].key).toBeNull()
+      expect(warnings.some(w => w.field === 'key')).toBe(true)
+    })
+
+    it('imports track with null key when key is empty', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A",120,"","Low"`
+      const { tracks, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].key).toBeNull()
+      expect(warnings.some(w => w.field === 'key')).toBe(true)
+    })
+
+    it('imports track with Unknown energy when energy is invalid', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A",120,"1A","Extreme"`
+      const { tracks, errors, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].energy).toBe('Unknown')
+      expect(errors).toHaveLength(0)
+      expect(warnings).toHaveLength(0)
+    })
+
+    it('imports track with Unknown energy when energy is empty', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A",120,"1A",""`
+      const { tracks } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].energy).toBe('Unknown')
+    })
+
+    it('includes the correct 1-based row number in warnings', () => {
+      const csv = `title,artist,bpm,key,energy\n"Good","A",120,"1A","Low"\n"Bad BPM","B","x","1A","Low"`
+      const { warnings } = parseCSV(csv)
+      expect(warnings[0].row).toBe(3)
+    })
+
+    it('can import a track missing both bpm and key', () => {
+      const csv = `title,artist,bpm,key,energy\n"T","A","","","Low"`
+      const { tracks, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(1)
+      expect(tracks[0].bpm).toBeNull()
+      expect(tracks[0].key).toBeNull()
+      expect(warnings).toHaveLength(2)
+    })
+  })
+
+  describe('row with both title/artist missing and bad bpm/key', () => {
+    it('skips the row and reports only title+artist errors (no bpm/key warnings for skipped rows)', () => {
+      const csv = `title,artist,bpm,key,energy\n"","",0,"bad","wrong"`
+      const { tracks, errors, warnings } = parseCSV(csv)
+      expect(tracks).toHaveLength(0)
+      expect(errors.length).toBeGreaterThanOrEqual(2) // title + artist
+      expect(warnings).toHaveLength(0) // no warnings for skipped rows
     })
   })
 })

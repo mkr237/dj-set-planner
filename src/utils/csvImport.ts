@@ -12,7 +12,8 @@ const VALID_ENERGY_LEVELS = new Set<string>(['Low', 'Mid', 'High'])
 
 export interface ImportResult {
   tracks: Track[]
-  errors: ImportError[]
+  errors: ImportError[]    // rows that were skipped entirely
+  warnings: ImportError[]  // rows imported but with missing bpm/key
 }
 
 export interface ImportError {
@@ -38,11 +39,12 @@ export function parseCSV(csvText: string): ImportResult {
         field: 'csv',
         message: e.message,
       })),
+      warnings: [],
     }
   }
 
   if (data.length === 0) {
-    return { tracks: [], errors: [] }
+    return { tracks: [], errors: [], warnings: [] }
   }
 
   const headers = Object.keys(data[0])
@@ -55,56 +57,75 @@ export function parseCSV(csvText: string): ImportResult {
         field: 'header',
         message: `Missing required columns: ${missingColumns.join(', ')}`,
       }],
+      warnings: [],
     }
   }
 
   const tracks: Track[] = []
   const errors: ImportError[] = []
+  const warnings: ImportError[] = []
 
   data.forEach((row, idx) => {
     const rowNum = idx + 2 // 1-based, accounting for header row
     const rowErrors: ImportError[] = []
 
+    // title and artist are identity fields — skip row if missing
     const title = row.title?.trim()
     if (!title) rowErrors.push({ row: rowNum, field: 'title', message: 'title is required' })
 
     const artist = row.artist?.trim()
     if (!artist) rowErrors.push({ row: rowNum, field: 'artist', message: 'artist is required' })
 
-    const bpmRaw = row.bpm?.trim()
-    const bpm = Number(bpmRaw)
-    if (!bpmRaw || !Number.isFinite(bpm) || bpm <= 0) {
-      rowErrors.push({ row: rowNum, field: 'bpm', message: `invalid bpm: "${bpmRaw}"` })
-    }
-
-    const keyRaw = row.key?.trim()
-    if (!VALID_CAMELOT_KEYS.has(keyRaw)) {
-      rowErrors.push({ row: rowNum, field: 'key', message: `invalid Camelot key: "${keyRaw}"` })
-    }
-
-    const energyRaw = row.energy?.trim()
-    const energy = energyRaw.charAt(0).toUpperCase() + energyRaw.slice(1).toLowerCase()
-    if (!VALID_ENERGY_LEVELS.has(energy)) {
-      rowErrors.push({ row: rowNum, field: 'energy', message: `invalid energy: "${energyRaw}" (expected Low, Mid, or High)` })
-    }
-
     if (rowErrors.length > 0) {
       errors.push(...rowErrors)
       return
     }
+
+    // bpm — null if missing/invalid, track still imported
+    const bpmRaw = row.bpm?.trim()
+    const bpmParsed = Number(bpmRaw)
+    const bpm: number | null =
+      bpmRaw && Number.isFinite(bpmParsed) && bpmParsed > 0 ? bpmParsed : null
+    if (bpm === null) {
+      warnings.push({
+        row: rowNum,
+        field: 'bpm',
+        message: `missing or invalid bpm${bpmRaw ? ` "${bpmRaw}"` : ''} — imported as incomplete`,
+      })
+    }
+
+    // key — null if missing/invalid, track still imported
+    const keyRaw = row.key?.trim()
+    const key: CamelotKey | null = VALID_CAMELOT_KEYS.has(keyRaw)
+      ? (keyRaw as CamelotKey)
+      : null
+    if (key === null) {
+      warnings.push({
+        row: rowNum,
+        field: 'key',
+        message: `missing or invalid Camelot key${keyRaw ? ` "${keyRaw}"` : ''} — imported as incomplete`,
+      })
+    }
+
+    // energy — 'Unknown' if missing/invalid, no warning
+    const energyRaw = row.energy?.trim() ?? ''
+    const energyNorm = energyRaw.charAt(0).toUpperCase() + energyRaw.slice(1).toLowerCase()
+    const energy: EnergyLevel = VALID_ENERGY_LEVELS.has(energyNorm)
+      ? (energyNorm as EnergyLevel)
+      : 'Unknown'
 
     tracks.push({
       id: crypto.randomUUID(),
       title,
       artist,
       bpm,
-      key: keyRaw as CamelotKey,
-      energy: energy as EnergyLevel,
+      key,
+      energy,
       genre: row.genre?.trim() || undefined,
       label: row.label?.trim() || undefined,
       notes: row.notes?.trim() || undefined,
     })
   })
 
-  return { tracks, errors }
+  return { tracks, errors, warnings }
 }

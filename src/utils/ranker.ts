@@ -34,10 +34,16 @@ export function rankCandidates(
 ): RankedCandidate[] {
   const effective: MixConstraints = { ...constraints, ...overrides }
 
+  // If the current track is incomplete, ranking is not possible
+  if (currentTrack.bpm === null || currentTrack.key === null) return []
+
   const results: RankedCandidate[] = []
 
   for (const track of library) {
     if (track.id === currentTrack.id) continue
+
+    // Incomplete tracks cannot be ranked
+    if (track.bpm === null || track.key === null) continue
 
     const camelotTier = getCamelotTier(currentTrack.key, track.key)
     if (camelotTier > effective.maxCamelotTier) continue
@@ -45,7 +51,12 @@ export function rankCandidates(
     const bpmDelta = Math.abs(track.bpm - currentTrack.bpm)
     if (bpmDelta > effective.bpmRange) continue
 
-    if (effective.energyFilter !== 'any' && !effective.energyFilter.includes(track.energy)) continue
+    // 'Unknown' energy passes through any energy filter
+    if (
+      effective.energyFilter !== 'any' &&
+      track.energy !== 'Unknown' &&
+      !effective.energyFilter.includes(track.energy)
+    ) continue
 
     const overallScore = (camelotTier - 1) * 1000 + bpmDelta
 

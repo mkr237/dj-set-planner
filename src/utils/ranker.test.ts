@@ -199,6 +199,78 @@ describe('rankCandidates — overrides', () => {
 })
 
 // ---------------------------------------------------------------------------
+// Null bpm / key handling
+// ---------------------------------------------------------------------------
+
+describe('rankCandidates — null bpm / key on current track', () => {
+  it('returns [] when currentTrack has null bpm', () => {
+    const nullBpm = makeTrack({ id: 'cur', bpm: null, key: '4A' })
+    const results = rankCandidates(nullBpm, library, defaults)
+    expect(results).toHaveLength(0)
+  })
+
+  it('returns [] when currentTrack has null key', () => {
+    const nullKey = makeTrack({ id: 'cur', bpm: 174, key: null })
+    const results = rankCandidates(nullKey, library, defaults)
+    expect(results).toHaveLength(0)
+  })
+})
+
+describe('rankCandidates — null bpm / key on candidates', () => {
+  it('excludes candidates with null bpm', () => {
+    const nullBpm = makeTrack({ id: 'null-bpm', bpm: null, key: '4A', energy: 'High' })
+    const results = rankCandidates(current, [nullBpm], defaults)
+    expect(results).toHaveLength(0)
+  })
+
+  it('excludes candidates with null key', () => {
+    const nullKey = makeTrack({ id: 'null-key', bpm: 174, key: null, energy: 'High' })
+    const results = rankCandidates(current, [nullKey], defaults)
+    expect(results).toHaveLength(0)
+  })
+
+  it('still returns valid candidates when some have null bpm/key', () => {
+    const valid = makeTrack({ id: 'valid', bpm: 174, key: '5A', energy: 'High' })
+    const nullBpm = makeTrack({ id: 'null-bpm', bpm: null, key: '4A', energy: 'High' })
+    const results = rankCandidates(current, [valid, nullBpm], defaults)
+    expect(results).toHaveLength(1)
+    expect(results[0].track.id).toBe('valid')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Unknown energy pass-through
+// ---------------------------------------------------------------------------
+
+describe('rankCandidates — Unknown energy', () => {
+  it('includes Unknown energy tracks when energyFilter is "any"', () => {
+    const unknown = makeTrack({ id: 'unk', bpm: 174, key: '4A', energy: 'Unknown' })
+    const results = rankCandidates(current, [unknown], defaults)
+    expect(results).toHaveLength(1)
+  })
+
+  it('includes Unknown energy tracks even when energyFilter is set to High only', () => {
+    const unknown = makeTrack({ id: 'unk', bpm: 174, key: '4A', energy: 'Unknown' })
+    const results = rankCandidates(current, [unknown], { ...defaults, energyFilter: ['High'] })
+    expect(results).toHaveLength(1)
+  })
+
+  it('includes Unknown energy tracks even when energyFilter is set to Low only', () => {
+    const unknown = makeTrack({ id: 'unk', bpm: 174, key: '4A', energy: 'Unknown' })
+    const results = rankCandidates(current, [unknown], { ...defaults, energyFilter: ['Low'] })
+    expect(results).toHaveLength(1)
+  })
+
+  it('excludes non-Unknown tracks that do not match the energy filter', () => {
+    const unknown = makeTrack({ id: 'unk', bpm: 174, key: '4A', energy: 'Unknown' })
+    const low = makeTrack({ id: 'low', bpm: 174, key: '4A', energy: 'Low' })
+    const results = rankCandidates(current, [unknown, low], { ...defaults, energyFilter: ['High'] })
+    expect(results).toHaveLength(1)
+    expect(results[0].track.id).toBe('unk')
+  })
+})
+
+// ---------------------------------------------------------------------------
 // Wrap-around Camelot edge cases
 // ---------------------------------------------------------------------------
 

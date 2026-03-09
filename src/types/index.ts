@@ -1,4 +1,4 @@
-export type EnergyLevel = 'Low' | 'Mid' | 'High'
+export type EnergyLevel = 'Low' | 'Mid' | 'High' | 'Unknown'
 
 export type CamelotKey =
   | '1A' | '2A' | '3A' | '4A' | '5A' | '6A'
@@ -10,9 +10,9 @@ export interface Track {
   id: string
   title: string
   artist: string
-  bpm: number
-  key: CamelotKey
-  energy: EnergyLevel
+  bpm: number | null       // null = missing, track excluded from candidate ranking
+  key: CamelotKey | null   // null = missing, track excluded from candidate ranking
+  energy: EnergyLevel      // 'Unknown' passes through all energy filters
   genre?: string
   label?: string
   notes?: string

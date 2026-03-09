@@ -82,10 +82,16 @@ export function PerformanceMode({ onExit }: { onExit: () => void }) {
   const next = resolved[cursor + 1]
   const prev = resolved[cursor - 1]
 
-  const transitionTier = next ? getCamelotTier(current?.track.key, next.track.key) : null
+  const transitionTier =
+    next && current?.track.key && next.track.key
+      ? getCamelotTier(current.track.key, next.track.key)
+      : null
   const tierColors = transitionTier ? TIER_COLORS[transitionTier] : null
 
-  const prevTier = prev ? getCamelotTier(prev.track.key, current?.track.key) : null
+  const prevTier =
+    prev && prev.track.key && current?.track.key
+      ? getCamelotTier(prev.track.key, current.track.key)
+      : null
   const prevColors = prevTier ? TIER_COLORS[prevTier] : null
 
   function goNext() { setCursor(c => Math.min(total - 1, c + 1)) }
@@ -174,11 +180,11 @@ export function PerformanceMode({ onExit }: { onExit: () => void }) {
               <div className="text-center">
                 <p className="text-xs text-slate-600 uppercase tracking-wider mb-1.5">Key</p>
                 <span className="text-3xl font-mono font-semibold text-white">
-                  {current.track.key}
+                  {current.track.key ?? '—'}
                 </span>
-                {prevColors && (
+                {prevColors && prev?.track.key && (
                   <p className={`text-xs font-mono mt-1.5 ${prevColors.text}`}>
-                    ← {prev?.track.key}
+                    ← {prev.track.key}
                   </p>
                 )}
               </div>
@@ -186,7 +192,7 @@ export function PerformanceMode({ onExit }: { onExit: () => void }) {
               <div className="text-center">
                 <p className="text-xs text-slate-600 uppercase tracking-wider mb-1.5">BPM</p>
                 <span className="text-3xl font-mono font-semibold text-white">
-                  {current.track.bpm}
+                  {current.track.bpm ?? '—'}
                 </span>
               </div>
               <div className="w-px h-12 bg-slate-800" />
@@ -210,7 +216,7 @@ export function PerformanceMode({ onExit }: { onExit: () => void }) {
                 <span className="text-sm text-slate-500 font-mono">
                   {current.track.key} → {next.track.key}
                 </span>
-                {Math.abs(next.track.bpm - current.track.bpm) > 0 && (
+                {next.track.bpm !== null && current.track.bpm !== null && Math.abs(next.track.bpm - current.track.bpm) > 0 && (
                   <span className="text-sm text-slate-600 font-mono">
                     ±{Math.abs(next.track.bpm - current.track.bpm)} BPM
                   </span>
@@ -229,8 +235,8 @@ export function PerformanceMode({ onExit }: { onExit: () => void }) {
               <p className="text-3xl font-semibold text-slate-400">{next.track.title}</p>
               <p className="text-xl text-slate-500">{next.track.artist}</p>
               <div className="flex items-center justify-center gap-6 pt-1 text-base font-mono text-slate-600">
-                <span>{next.track.key}</span>
-                <span>{next.track.bpm} BPM</span>
+                <span>{next.track.key ?? '—'}</span>
+                <span>{next.track.bpm !== null ? `${next.track.bpm} BPM` : '—'}</span>
                 <span>{next.track.energy}</span>
               </div>
             </div>

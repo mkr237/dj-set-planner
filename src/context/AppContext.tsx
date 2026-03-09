@@ -37,6 +37,7 @@ const initialState: AppState = {
 
 export type AppAction =
   | { type: 'SET_TRACKS'; payload: Track[] }
+  | { type: 'EDIT_TRACK'; payload: Track }
   | { type: 'SET_CONSTRAINTS'; payload: MixConstraints }
   | { type: 'NEW_SET' }
   | { type: 'LOAD_SET'; payload: DJSet }
@@ -53,6 +54,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_TRACKS':
       return { ...state, tracks: action.payload }
+
+    case 'EDIT_TRACK':
+      return {
+        ...state,
+        tracks: state.tracks.map(t => t.id === action.payload.id ? action.payload : t),
+      }
 
     case 'SET_CONSTRAINTS':
       return { ...state, constraints: action.payload }

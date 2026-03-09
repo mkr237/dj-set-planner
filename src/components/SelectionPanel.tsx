@@ -1,60 +1,98 @@
+import { useState } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { CSVImport } from './CSVImport'
 import { CandidatePanel } from './CandidatePanel'
+import { TrackEditModal } from './TrackEditModal'
 import type { Track } from '../types'
 
 // ---------------------------------------------------------------------------
 // FullLibraryView
 // ---------------------------------------------------------------------------
 
-function TrackRow({ track, onAdd }: { track: Track; onAdd: (id: string) => void }) {
+function TrackRow({
+  track,
+  onAdd,
+  onEdit,
+}: {
+  track: Track
+  onAdd: (id: string) => void
+  onEdit: (track: Track) => void
+}) {
+  const isIncomplete = track.bpm === null || track.key === null
+
   return (
-    <button
-      onClick={() => onAdd(track.id)}
-      className="w-full text-left flex items-center gap-3 px-4 py-2.5 border-b border-border/50 hover:bg-surface-3 transition-colors duration-150 active:opacity-70 group"
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-medium truncate text-white">{track.title}</span>
-          <span className="text-xs text-slate-400 shrink-0 font-mono">{track.bpm} BPM</span>
-        </div>
-        <div className="flex items-center justify-between mt-0.5">
-          <span className="text-xs text-slate-500 truncate">{track.artist}</span>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs font-mono text-slate-300">{track.key}</span>
-            <span className="text-xs text-slate-500">{track.energy}</span>
+    <div className="w-full flex items-stretch border-b border-border/50 group hover:bg-surface-3 transition-colors duration-150">
+      {/* Main area — click to add to set */}
+      <button
+        onClick={() => onAdd(track.id)}
+        className="flex-1 min-w-0 flex items-center gap-3 px-4 py-2.5 text-left active:opacity-70"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-sm font-medium truncate text-white">{track.title}</span>
+            <span className="text-xs text-slate-400 shrink-0 font-mono">
+              {track.bpm !== null ? `${track.bpm} BPM` : '—'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between mt-0.5">
+            <span className="text-xs text-slate-500 truncate">{track.artist}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              {isIncomplete && (
+                <span className="text-xs text-amber-600/80" title="Missing BPM or key">!</span>
+              )}
+              <span className="text-xs font-mono text-slate-300">{track.key ?? '—'}</span>
+              <span className="text-xs text-slate-500">
+                {track.energy === 'Unknown' ? '?' : track.energy}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-      <span className="shrink-0 text-slate-700 group-hover:text-accent-hover transition-colors duration-150 font-mono">
-        +
-      </span>
-    </button>
+        <span className="shrink-0 text-slate-700 group-hover:text-accent-hover transition-colors duration-150 font-mono">
+          +
+        </span>
+      </button>
+
+      {/* Edit button */}
+      <button
+        onClick={() => onEdit(track)}
+        title="Edit track"
+        className="shrink-0 px-2 flex items-center justify-center text-slate-700 hover:text-slate-200 opacity-0 group-hover:opacity-100 transition-all duration-150 text-xs"
+      >
+        ✎
+      </button>
+    </div>
   )
 }
 
 function FullLibraryView() {
   const { state, dispatch } = useAppContext()
   const { tracks } = state
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null)
 
   function handleAdd(trackId: string) {
     dispatch({ type: 'ADD_TRACK_TO_SET', payload: trackId })
   }
 
   return (
-    <div className="flex flex-col h-full bg-surface-0">
-      <div className="px-4 py-2.5 border-b border-border bg-surface-1 shrink-0">
-        <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
-          Select your first track
-        </p>
-        <p className="text-xs text-slate-600 mt-0.5">{tracks.length} track{tracks.length !== 1 ? 's' : ''} in library</p>
+    <>
+      <div className="flex flex-col h-full bg-surface-0">
+        <div className="px-4 py-2.5 border-b border-border bg-surface-1 shrink-0">
+          <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold">
+            Select your first track
+          </p>
+          <p className="text-xs text-slate-600 mt-0.5">{tracks.length} track{tracks.length !== 1 ? 's' : ''} in library</p>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {tracks.map(track => (
+            <TrackRow key={track.id} track={track} onAdd={handleAdd} onEdit={setEditingTrack} />
+          ))}
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        {tracks.map(track => (
-          <TrackRow key={track.id} track={track} onAdd={handleAdd} />
-        ))}
-      </div>
-    </div>
+
+      {editingTrack && (
+        <TrackEditModal track={editingTrack} onClose={() => setEditingTrack(null)} />
+      )}
+    </>
   )
 }
 

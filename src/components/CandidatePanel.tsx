@@ -10,18 +10,18 @@ import type { EnergyLevel, MixConstraints, Track } from '../types'
 
 type EnergyDirection = 'any' | 'maintain' | 'build' | 'drop'
 
-const ENERGY_ORDER: Record<EnergyLevel, number> = { Low: 0, Mid: 1, High: 2 }
+const ENERGY_ORDER: Partial<Record<EnergyLevel, number>> = { Low: 0, Mid: 1, High: 2 }
 const ALL_ENERGY: EnergyLevel[] = ['Low', 'Mid', 'High']
 
 function energyFilterFromDirection(
   direction: EnergyDirection,
   current: EnergyLevel,
 ): EnergyLevel[] | 'any' {
-  const rank = ENERGY_ORDER[current]
+  const rank = ENERGY_ORDER[current] ?? -1
   switch (direction) {
     case 'maintain': return [current]
-    case 'build':    return ALL_ENERGY.filter(l => ENERGY_ORDER[l] > rank)
-    case 'drop':     return ALL_ENERGY.filter(l => ENERGY_ORDER[l] < rank)
+    case 'build':    return ALL_ENERGY.filter(l => (ENERGY_ORDER[l] ?? -1) > rank)
+    case 'drop':     return ALL_ENERGY.filter(l => (ENERGY_ORDER[l] ?? -1) < rank)
     default:         return 'any'
   }
 }
@@ -65,30 +65,42 @@ function ToggleGroup<T extends string>({
 function CandidateRow({
   candidate,
   onAdd,
+  setPosition,
 }: {
   candidate: RankedCandidate
   onAdd: (id: string) => void
+  setPosition?: number
 }) {
   const { track, camelotTier, bpmDelta } = candidate
   const colors = TIER_COLORS[camelotTier]
   const bpmLabel = bpmDelta === 0 ? '=' : `±${bpmDelta}`
+  const inSet = setPosition !== undefined
 
   return (
     <button
       onClick={() => onAdd(track.id)}
-      className={`w-full text-left flex items-stretch border-b border-border/50 border-l-4 ${colors.border} ${colors.row} transition-colors duration-150 active:opacity-70 active:scale-[0.995]`}
+      className={`w-full text-left flex items-stretch border-b border-border/50 border-l-4 ${colors.border} ${colors.row} transition-all duration-150 active:opacity-70 active:scale-[0.995] ${
+        inSet ? 'opacity-50 hover:opacity-90' : ''
+      }`}
     >
-      {/* Tier badge */}
-      <div className="flex items-center px-3 py-3">
+      {/* Tier badge + optional set position badge */}
+      <div className="flex items-center gap-1.5 px-3 py-3">
         <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${colors.badge}`}>
           {colors.label}
         </span>
+        {inSet && (
+          <span className="text-xs font-mono text-slate-500 bg-surface-3 px-1.5 py-0.5 rounded">
+            #{setPosition}
+          </span>
+        )}
       </div>
 
       {/* Track info */}
       <div className="flex-1 min-w-0 py-2.5 pr-4">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-medium truncate text-white">{track.title}</span>
+          <span className={`text-sm font-medium truncate ${inSet ? 'text-slate-400' : 'text-white'}`}>
+            {track.title}
+          </span>
           <span className="text-xs text-slate-400 shrink-0 font-mono">{track.bpm} BPM</span>
         </div>
         <div className="flex items-center justify-between mt-0.5">
@@ -96,7 +108,11 @@ function CandidateRow({
           <div className="flex items-center gap-2 shrink-0">
             <span className={`text-xs font-mono font-semibold ${colors.text}`}>{bpmLabel}</span>
             <span className="text-xs font-mono text-slate-300">{track.key}</span>
-            <span className="text-xs text-slate-500">{track.energy}</span>
+            {track.energy === 'Unknown' ? (
+              <span className="text-xs font-mono text-slate-600 bg-surface-3 px-1 rounded" title="Energy level not set">?</span>
+            ) : (
+              <span className="text-xs text-slate-500">{track.energy}</span>
+            )}
           </div>
         </div>
       </div>
@@ -110,17 +126,23 @@ function CandidateRow({
 
 export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
   const { state, dispatch } = useAppContext()
-  const { tracks, constraints } = state
+  const { tracks, constraints, currentSet } = state
 
   const [bpmOverride, setBpmOverride] = useState<number | null>(null)
   const [tierOverride, setTierOverride] = useState<number | null>(null)
   const [energyDirection, setEnergyDirection] = useState<EnergyDirection>('any')
+  const [showInSet, setShowInSet] = useState(false)
 
   useEffect(() => {
     setBpmOverride(null)
     setTierOverride(null)
     setEnergyDirection('any')
+    setShowInSet(false)
   }, [currentTrack.id])
+
+  // Map of trackId → 1-based position for tracks already in the set
+  const setPositionMap = new Map<string, number>()
+  currentSet?.tracks.forEach(st => setPositionMap.set(st.trackId, st.position + 1))
 
   const overrides: Partial<MixConstraints> = {}
   if (bpmOverride !== null) overrides.bpmRange = bpmOverride
@@ -132,7 +154,12 @@ export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
   const effectiveBpm = bpmOverride ?? constraints.bpmRange
   const effectiveTier = tierOverride ?? constraints.maxCamelotTier
 
-  const candidates = rankCandidates(currentTrack, tracks, constraints, overrides)
+  const allCandidates = rankCandidates(currentTrack, tracks, constraints, overrides)
+  const candidates = showInSet
+    ? allCandidates
+    : allCandidates.filter(c => !setPositionMap.has(c.track.id))
+
+  const hiddenInSetCount = showInSet ? 0 : allCandidates.filter(c => setPositionMap.has(c.track.id)).length
 
   function handleAdd(trackId: string) {
     dispatch({ type: 'ADD_TRACK_TO_SET', payload: trackId })
@@ -203,13 +230,37 @@ export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
           )}
         </div>
 
+        <div className="w-px h-3.5 bg-border shrink-0" />
+
+        <button
+          onClick={() => setShowInSet(v => !v)}
+          className={`text-xs px-2 py-0.5 rounded border transition-colors duration-100 ${
+            showInSet
+              ? 'bg-accent/20 border-accent/40 text-accent-hover'
+              : 'border-border text-slate-600 hover:text-slate-400 hover:border-slate-600'
+          }`}
+        >
+          Show in set
+        </button>
+
         <span className="ml-auto text-xs text-slate-600 shrink-0">
           {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+          {hiddenInSetCount > 0 && (
+            <span className="text-slate-700"> · {hiddenInSetCount} hidden</span>
+          )}
         </span>
       </div>
 
       {/* Candidate list */}
-      {candidates.length === 0 ? (
+      {currentTrack.bpm === null || currentTrack.key === null ? (
+        <div className="flex-1 flex items-center justify-center px-6">
+          <p className="text-sm text-slate-500 text-center">
+            This track is missing BPM or key data.
+            <br />
+            <span className="text-xs text-slate-600">Edit the track in the set timeline to enable candidate ranking.</span>
+          </p>
+        </div>
+      ) : candidates.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-6">
           <p className="text-sm text-slate-500 text-center">
             No candidates match the current constraints.
@@ -220,10 +271,16 @@ export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
       ) : (
         <div className="overflow-y-auto flex-1">
           {candidates.map(c => (
-            <CandidateRow key={c.track.id} candidate={c} onAdd={handleAdd} />
+            <CandidateRow
+              key={c.track.id}
+              candidate={c}
+              onAdd={handleAdd}
+              setPosition={setPositionMap.get(c.track.id)}
+            />
           ))}
         </div>
       )}
     </div>
   )
 }
+

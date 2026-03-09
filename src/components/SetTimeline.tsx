@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { getCamelotTier } from '../utils/camelot'
 import { TIER_COLORS } from '../utils/tierColors'
+import { TrackEditModal } from './TrackEditModal'
 import type { SetTrack, Track } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -9,9 +10,28 @@ import type { SetTrack, Track } from '../types'
 // ---------------------------------------------------------------------------
 
 function TransitionBadge({ from, to }: { from: Track; to: Track }) {
+  const bpmDelta =
+    from.bpm !== null && to.bpm !== null ? Math.abs(to.bpm - from.bpm) : null
+
+  if (from.key === null || to.key === null) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-1 border-l-4 border-l-slate-700 border-b border-border/30 bg-surface-0">
+        <div className="w-4 shrink-0" />
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-mono font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-600 ring-1 ring-slate-700/60">
+            ?
+          </span>
+          <span className="text-slate-600 font-mono">key unknown</span>
+          {bpmDelta !== null && bpmDelta > 0 && (
+            <span className="text-slate-700 font-mono">±{bpmDelta} BPM</span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   const tier = getCamelotTier(from.key, to.key)
   const colors = TIER_COLORS[tier]
-  const bpmDelta = Math.abs(to.bpm - from.bpm)
 
   return (
     <div className={`flex items-center gap-2 px-4 py-1 border-l-4 ${colors.border} border-b border-border/30 bg-surface-0`}>
@@ -21,7 +41,7 @@ function TransitionBadge({ from, to }: { from: Track; to: Track }) {
           {colors.label}
         </span>
         <span className="text-slate-500 font-mono">{from.key} → {to.key}</span>
-        {bpmDelta > 0 && (
+        {bpmDelta !== null && bpmDelta > 0 && (
           <span className="text-slate-600 font-mono">±{bpmDelta} BPM</span>
         )}
       </div>
@@ -39,6 +59,7 @@ function TimelineTrack({
   isDragging,
   isDropTarget,
   onRemove,
+  onEdit,
   onDragStart,
   onDragOver,
   onDrop,
@@ -49,11 +70,14 @@ function TimelineTrack({
   isDragging: boolean
   isDropTarget: boolean
   onRemove: () => void
+  onEdit: () => void
   onDragStart: () => void
   onDragOver: (e: React.DragEvent) => void
   onDrop: () => void
   onDragEnd: () => void
 }) {
+  const isIncomplete = track.bpm === null || track.key === null
+
   return (
     <div
       draggable
@@ -81,25 +105,41 @@ function TimelineTrack({
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-sm font-medium truncate text-white">{track.title}</span>
-          <span className="text-xs text-slate-400 shrink-0 font-mono">{track.bpm} BPM</span>
+          <span className="text-xs text-slate-400 shrink-0 font-mono">
+            {track.bpm !== null ? `${track.bpm} BPM` : '— BPM'}
+          </span>
         </div>
         <div className="flex items-center justify-between mt-0.5">
           <span className="text-xs text-slate-500 truncate">{track.artist}</span>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-xs font-mono text-slate-300">{track.key}</span>
-            <span className="text-xs text-slate-500">{track.energy}</span>
+            {isIncomplete && (
+              <span className="text-xs text-amber-600/80" title="Missing BPM or key — edit to fix">!</span>
+            )}
+            <span className="text-xs font-mono text-slate-300">{track.key ?? '—'}</span>
+            <span className="text-xs text-slate-500">
+              {track.energy === 'Unknown' ? '?' : track.energy}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Remove button */}
-      <button
-        onClick={onRemove}
-        title="Remove from set"
-        className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-slate-700 hover:text-red-400 hover:bg-surface-2 opacity-0 group-hover:opacity-100 transition-all duration-150 text-base leading-none"
-      >
-        ×
-      </button>
+      {/* Action buttons */}
+      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-150">
+        <button
+          onClick={onEdit}
+          title="Edit track"
+          className="w-6 h-6 flex items-center justify-center rounded text-slate-600 hover:text-slate-200 hover:bg-surface-2 transition-colors text-xs leading-none"
+        >
+          ✎
+        </button>
+        <button
+          onClick={onRemove}
+          title="Remove from set"
+          className="w-6 h-6 flex items-center justify-center rounded text-slate-700 hover:text-red-400 hover:bg-surface-2 transition-all duration-150 text-base leading-none"
+        >
+          ×
+        </button>
+      </div>
     </div>
   )
 }
@@ -116,6 +156,7 @@ export function SetTimeline() {
 
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Smooth-scroll to the bottom when a new track is appended
@@ -178,27 +219,34 @@ export function SetTimeline() {
   }
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto">
-      {resolvedTracks.map(({ setTrack, track }, index) => (
-        <div key={setTrack.trackId}>
-          {index > 0 && resolvedTracks[index - 1].track && (
-            <TransitionBadge from={resolvedTracks[index - 1].track} to={track} />
-          )}
-          <TimelineTrack
-            position={index}
-            track={track}
-            isDragging={dragIndex === index}
-            isDropTarget={dropIndex === index && dragIndex !== index}
-            onRemove={() =>
-              dispatch({ type: 'REMOVE_TRACK_FROM_SET', payload: setTrack.position })
-            }
-            onDragStart={() => setDragIndex(index)}
-            onDragOver={e => handleDragOver(e, index)}
-            onDrop={() => handleDrop(index)}
-            onDragEnd={handleDragEnd}
-          />
-        </div>
-      ))}
-    </div>
+    <>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        {resolvedTracks.map(({ setTrack, track }, index) => (
+          <div key={setTrack.trackId}>
+            {index > 0 && resolvedTracks[index - 1].track && (
+              <TransitionBadge from={resolvedTracks[index - 1].track} to={track} />
+            )}
+            <TimelineTrack
+              position={index}
+              track={track}
+              isDragging={dragIndex === index}
+              isDropTarget={dropIndex === index && dragIndex !== index}
+              onRemove={() =>
+                dispatch({ type: 'REMOVE_TRACK_FROM_SET', payload: setTrack.position })
+              }
+              onEdit={() => setEditingTrack(track)}
+              onDragStart={() => setDragIndex(index)}
+              onDragOver={e => handleDragOver(e, index)}
+              onDrop={() => handleDrop(index)}
+              onDragEnd={handleDragEnd}
+            />
+          </div>
+        ))}
+      </div>
+
+      {editingTrack && (
+        <TrackEditModal track={editingTrack} onClose={() => setEditingTrack(null)} />
+      )}
+    </>
   )
 }

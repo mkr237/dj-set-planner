@@ -26,6 +26,7 @@ export function CSVImport() {
   const { dispatch } = useAppContext()
   const inputRef = useRef<HTMLInputElement>(null)
   const [errors, setErrors] = useState<ImportError[]>([])
+  const [warnings, setWarnings] = useState<ImportError[]>([])
   const [importedCount, setImportedCount] = useState<number | null>(null)
   const [dragging, setDragging] = useState(false)
 
@@ -34,8 +35,9 @@ export function CSVImport() {
     reader.onload = (e) => {
       const text = e.target?.result
       if (typeof text !== 'string') return
-      const { tracks, errors: parseErrors } = parseCSV(text)
+      const { tracks, errors: parseErrors, warnings: parseWarnings } = parseCSV(text)
       setErrors(parseErrors)
+      setWarnings(parseWarnings)
       setImportedCount(tracks.length)
       if (tracks.length > 0) {
         dispatch({ type: 'SET_TRACKS', payload: tracks })
@@ -126,11 +128,24 @@ export function CSVImport() {
 
       {/* Import result */}
       {importedCount !== null && (
-        <div className="mt-6 w-full max-w-sm space-y-1">
+        <div className="mt-6 w-full max-w-sm space-y-2">
           {importedCount > 0 && (
             <p className="text-sm text-green-400 text-center">
               ✓ {importedCount} track{importedCount !== 1 ? 's' : ''} imported
+              {warnings.length > 0 && (
+                <span className="text-amber-500/80"> · {warnings.length} incomplete</span>
+              )}
             </p>
+          )}
+          {warnings.length > 0 && (
+            <>
+              <p className="text-xs text-amber-600/80 text-center">Missing BPM or key — edit tracks to enable candidate ranking</p>
+              <ul className="text-xs text-amber-700/80 space-y-0.5 max-h-24 overflow-y-auto bg-surface-2 rounded-lg p-3">
+                {warnings.map((w, i) => (
+                  <li key={i} className="font-mono">Row {w.row}: {w.message}</li>
+                ))}
+              </ul>
+            </>
           )}
           {errors.length > 0 && (
             <>
