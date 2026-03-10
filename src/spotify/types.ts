@@ -19,6 +19,39 @@ export interface SpotifyTokenResponse {
   token_type: string
 }
 
+export interface SpotifyApiTrack {
+  id: string | null      // null for local files
+  name: string
+  artists: Array<{ name: string }>
+  uri: string
+  preview_url: string | null
+  is_local: boolean
+}
+
+export interface SpotifyApiTrackItem {
+  // null when the track has been removed from the playlist
+  item: SpotifyApiTrack | null
+  is_local: boolean
+}
+
+export interface SpotifyTracksPage {
+  items: SpotifyApiTrackItem[]
+  next: string | null
+  total: number
+}
+
+export interface SpotifyApiAudioFeatures {
+  id: string
+  tempo: number   // BPM
+  key: number     // 0-11 pitch class, -1 if unknown
+  mode: number    // 0 = minor, 1 = major
+  energy: number  // 0.0-1.0
+}
+
+export interface SpotifyAudioFeaturesResponse {
+  audio_features: (SpotifyApiAudioFeatures | null)[]
+}
+
 export interface SpotifyApiPlaylist {
   id: string
   name: string
@@ -64,4 +97,17 @@ export interface SpotifyService {
    * Handles Spotify pagination automatically.
    */
   getUserPlaylists(): Promise<import('../types').ConnectedPlaylist[]>
+
+  /**
+   * Fetch all tracks in a playlist, skipping nulls and local files.
+   * Handles Spotify pagination automatically.
+   */
+  getPlaylistTracks(playlistId: string): Promise<SpotifyApiTrack[]>
+
+  /**
+   * Fetch audio features (BPM, key, energy) for a batch of track IDs.
+   * Handles batching (max 100 per request) automatically.
+   * Returns null entries for tracks where features are unavailable.
+   */
+  getAudioFeatures(trackIds: string[]): Promise<(SpotifyApiAudioFeatures | null)[]>
 }

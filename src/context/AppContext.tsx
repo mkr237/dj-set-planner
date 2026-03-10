@@ -10,11 +10,46 @@ import type { Track, DJSet, MixConstraints, SetTrack, ConnectedPlaylist } from '
 import { storage } from '../storage'
 
 // ---------------------------------------------------------------------------
+// Derive the effective track pool from the per-playlist cache.
+// Includes tracks from enabled playlists + any track already in the current
+// set (so the timeline stays intact even if its playlist is disabled).
+// ---------------------------------------------------------------------------
+
+function recomputeTracks(
+  cache: Record<string, Track[]>,
+  playlists: ConnectedPlaylist[],
+  currentSet: DJSet | null
+): Track[] {
+  const enabledIds = new Set(playlists.filter(p => p.enabled).map(p => p.spotifyId))
+  const setTrackIds = new Set(currentSet?.tracks.map(t => t.trackId) ?? [])
+
+  const seen = new Set<string>()
+  const result: Track[] = []
+
+  for (const [playlistId, tracks] of Object.entries(cache)) {
+    const inEnabledPlaylist = enabledIds.has(playlistId)
+    for (const track of tracks) {
+      if (seen.has(track.id)) continue
+      seen.add(track.id)
+      if (inEnabledPlaylist || setTrackIds.has(track.id)) {
+        result.push(track)
+      }
+    }
+  }
+
+  return result
+}
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
 export interface AppState {
   tracks: Track[]
+  /** Per-playlist track cache (session-only, not persisted). */
+  playlistTracksCache: Record<string, Track[]>
+  /** IDs of playlists whose tracks are currently being fetched. */
+  fetchingPlaylistIds: string[]
   currentSet: DJSet | null
   constraints: MixConstraints
   connectedPlaylists: ConnectedPlaylist[]
@@ -28,6 +63,8 @@ const DEFAULT_CONSTRAINTS: MixConstraints = {
 
 const initialState: AppState = {
   tracks: [],
+  playlistTracksCache: {},
+  fetchingPlaylistIds: [],
   currentSet: null,
   constraints: DEFAULT_CONSTRAINTS,
   connectedPlaylists: [],
@@ -50,6 +87,8 @@ export type AppAction =
   | { type: 'SET_PLAYLISTS'; payload: ConnectedPlaylist[] }
   | { type: 'TOGGLE_PLAYLIST'; payload: string }             // spotifyId
   | { type: 'SET_ALL_PLAYLISTS_ENABLED'; payload: boolean }
+  | { type: 'CACHE_PLAYLIST_TRACKS'; payload: { playlistId: string; tracks: Track[] } }
+  | { type: 'SET_PLAYLIST_FETCHING'; payload: { playlistId: string; fetching: boolean } }
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -147,22 +186,50 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'SET_PLAYLISTS':
       return { ...state, connectedPlaylists: action.payload }
 
-    case 'TOGGLE_PLAYLIST':
+    case 'TOGGLE_PLAYLIST': {
+      const updatedPlaylists = state.connectedPlaylists.map(p =>
+        p.spotifyId === action.payload ? { ...p, enabled: !p.enabled } : p
+      )
       return {
         ...state,
-        connectedPlaylists: state.connectedPlaylists.map(p =>
-          p.spotifyId === action.payload ? { ...p, enabled: !p.enabled } : p
-        ),
+        connectedPlaylists: updatedPlaylists,
+        tracks: recomputeTracks(state.playlistTracksCache, updatedPlaylists, state.currentSet),
       }
+    }
 
-    case 'SET_ALL_PLAYLISTS_ENABLED':
+    case 'SET_ALL_PLAYLISTS_ENABLED': {
+      const updatedPlaylists = state.connectedPlaylists.map(p => ({
+        ...p,
+        enabled: action.payload,
+      }))
       return {
         ...state,
-        connectedPlaylists: state.connectedPlaylists.map(p => ({
-          ...p,
-          enabled: action.payload,
-        })),
+        connectedPlaylists: updatedPlaylists,
+        tracks: recomputeTracks(state.playlistTracksCache, updatedPlaylists, state.currentSet),
       }
+    }
+
+    case 'CACHE_PLAYLIST_TRACKS': {
+      const newCache = {
+        ...state.playlistTracksCache,
+        [action.payload.playlistId]: action.payload.tracks,
+      }
+      return {
+        ...state,
+        playlistTracksCache: newCache,
+        tracks: recomputeTracks(newCache, state.connectedPlaylists, state.currentSet),
+      }
+    }
+
+    case 'SET_PLAYLIST_FETCHING': {
+      const { playlistId, fetching } = action.payload
+      return {
+        ...state,
+        fetchingPlaylistIds: fetching
+          ? [...state.fetchingPlaylistIds, playlistId]
+          : state.fetchingPlaylistIds.filter(id => id !== playlistId),
+      }
+    }
 
     default:
       return state

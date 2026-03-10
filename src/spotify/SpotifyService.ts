@@ -1,6 +1,10 @@
 import { generateCodeVerifier, generateCodeChallenge } from './pkce'
 import { SPOTIFY_CONFIG } from './config'
-import type { SpotifyAuth, SpotifyService, SpotifyTokenResponse, SpotifyPlaylistsPage } from './types'
+import type {
+  SpotifyAuth, SpotifyService, SpotifyTokenResponse,
+  SpotifyPlaylistsPage, SpotifyTracksPage,
+  SpotifyApiTrack, SpotifyApiAudioFeatures, SpotifyAudioFeaturesResponse,
+} from './types'
 import type { ConnectedPlaylist } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -104,6 +108,7 @@ export class SpotifyServiceImpl implements SpotifyService {
       code_challenge: challenge,
       state,
       scope: SPOTIFY_CONFIG.scopes.join(' '),
+      show_dialog: 'true',
     })
 
     window.location.href = `${SPOTIFY_CONFIG.authUrl}?${params}`
@@ -208,6 +213,69 @@ export class SpotifyServiceImpl implements SpotifyService {
     }
 
     return playlists
+  }
+
+  async getPlaylistTracks(playlistId: string): Promise<SpotifyApiTrack[]> {
+    const tracks: SpotifyApiTrack[] = []
+    let url: string | null =
+      `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`
+
+    while (url) {
+      const token = await this.getAccessToken()
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '(unreadable)')
+        throw new Error(`Failed to fetch playlist tracks (HTTP ${response.status}): ${body}`)
+      }
+
+      const page = (await response.json()) as SpotifyTracksPage
+      for (const item of page.items) {
+        const track = item?.item
+        // Skip nulls (removed tracks), episodes, and local files (no Spotify ID)
+        if (track && track.id && !item.is_local) {
+          tracks.push(track)
+        }
+      }
+      url = page.next
+    }
+
+    return tracks
+  }
+
+  async getAudioFeatures(
+    trackIds: string[]
+  ): Promise<(SpotifyApiAudioFeatures | null)[]> {
+    if (trackIds.length === 0) return []
+
+    const features: (SpotifyApiAudioFeatures | null)[] = []
+
+    // Spotify's audio-features endpoint accepts max 100 IDs per request
+    for (let i = 0; i < trackIds.length; i += 100) {
+      const batch = trackIds.slice(i, i + 100)
+      const token = await this.getAccessToken()
+      const response = await fetch(
+        `https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      if (response.status === 403) {
+        // Audio features are restricted for this Spotify app tier — return nulls
+        features.push(...batch.map(() => null))
+        continue
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch audio features (HTTP ${response.status})`)
+      }
+
+      const data = (await response.json()) as SpotifyAudioFeaturesResponse
+      features.push(...data.audio_features)
+    }
+
+    return features
   }
 
   // -------------------------------------------------------------------------

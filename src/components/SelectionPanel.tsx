@@ -100,9 +100,18 @@ function FullLibraryView() {
 // SelectionPanel
 // ---------------------------------------------------------------------------
 
+function LibraryLoadingView() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 h-full">
+      <span className="inline-block w-5 h-5 border-2 border-slate-600 border-t-slate-300 rounded-full animate-spin" />
+      <p className="text-sm text-slate-500">Loading tracks…</p>
+    </div>
+  )
+}
+
 export function SelectionPanel() {
   const { state } = useAppContext()
-  const { tracks, currentSet } = state
+  const { tracks, currentSet, fetchingPlaylistIds } = state
 
   const lastSetTrack =
     currentSet && currentSet.tracks.length > 0
@@ -114,11 +123,13 @@ export function SelectionPanel() {
     : undefined
 
   const hasNoTracks = tracks.length === 0
+  const isFetchingPlaylists = fetchingPlaylistIds.length > 0
   const setIsEmpty = !currentSet || currentSet.tracks.length === 0
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      {hasNoTracks && <CSVImport />}
+      {hasNoTracks && isFetchingPlaylists && <LibraryLoadingView />}
+      {hasNoTracks && !isFetchingPlaylists && <CSVImport />}
       {!hasNoTracks && setIsEmpty && <FullLibraryView />}
       {!hasNoTracks && !setIsEmpty && currentTrack && (
         <CandidatePanel currentTrack={currentTrack} />
