@@ -1,10 +1,13 @@
 import type { DJSet, MixConstraints, Track } from '../types'
+import type { SpotifyAuth } from '../spotify/types'
 import type { StorageService } from './types'
+import { SPOTIFY_AUTH_KEY } from '../spotify/SpotifyService'
 
 const KEYS = {
   tracks: 'djsp:tracks',
   sets: 'djsp:sets',
   constraints: 'djsp:constraints',
+  spotifyAuth: SPOTIFY_AUTH_KEY,
 } as const
 
 const DEFAULT_CONSTRAINTS: MixConstraints = {
@@ -66,6 +69,22 @@ export class LocalStorageService implements StorageService {
 
   saveConstraints(constraints: MixConstraints): Promise<void> {
     write(KEYS.constraints, constraints)
+    return Promise.resolve()
+  }
+
+  getSpotifyAuth(): Promise<SpotifyAuth | null> {
+    const raw = localStorage.getItem(KEYS.spotifyAuth)
+    if (raw === null) return Promise.resolve(null)
+    return Promise.resolve(JSON.parse(raw) as SpotifyAuth)
+  }
+
+  saveSpotifyAuth(auth: SpotifyAuth): Promise<void> {
+    write(KEYS.spotifyAuth, auth)
+    return Promise.resolve()
+  }
+
+  clearSpotifyAuth(): Promise<void> {
+    localStorage.removeItem(KEYS.spotifyAuth)
     return Promise.resolve()
   }
 }

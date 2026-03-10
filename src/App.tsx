@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AppProvider } from './context/AppContext'
 import { useAppContext } from './context/AppContext'
+import { spotifyService } from './spotify'
 import { SetHeader } from './components/SetHeader'
 import { SetTimeline } from './components/SetTimeline'
 import { SelectionPanel } from './components/SelectionPanel'
@@ -11,11 +12,48 @@ import { PerformanceMode } from './components/PerformanceMode'
 
 type AppMode = 'edit' | 'performance'
 
+function useSpotifyCallback() {
+  const [callbackError, setCallbackError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (window.location.pathname !== '/callback') return
+
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    const state = params.get('state')
+    const error = params.get('error')
+
+    // Clean the URL immediately so a refresh doesn't re-run the callback
+    window.history.replaceState({}, '', '/')
+
+    if (error) {
+      setCallbackError(`Spotify login was denied: ${error}`)
+      return
+    }
+
+    if (!code || !state) {
+      setCallbackError('Invalid callback — missing code or state parameter')
+      return
+    }
+
+    spotifyService
+      .handleCallback(code, state)
+      .catch(err =>
+        setCallbackError(
+          err instanceof Error ? err.message : 'Spotify authentication failed'
+        )
+      )
+  }, [])
+
+  return callbackError
+}
+
 function AppShell() {
   const { state } = useAppContext()
   const [mode, setMode] = useState<AppMode>('edit')
   const [showConstraints, setShowConstraints] = useState(false)
   const [showDrawer, setShowDrawer] = useState(false)
+  const callbackError = useSpotifyCallback()
 
   const hasSetTracks = (state.currentSet?.tracks.length ?? 0) > 0
 
@@ -55,6 +93,13 @@ function AppShell() {
           </button>
         </div>
       </header>
+
+      {/* Spotify callback error banner */}
+      {callbackError && (
+        <div className="shrink-0 bg-red-900/60 border-b border-red-700 px-6 py-2 text-xs text-red-300">
+          {callbackError}
+        </div>
+      )}
 
       {/* Three-panel layout */}
       <div className="flex flex-1 overflow-hidden">
