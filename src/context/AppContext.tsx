@@ -3,6 +3,7 @@ import {
   useContext,
   useReducer,
   useEffect,
+  useRef,
   type ReactNode,
   type Dispatch,
 } from 'react'
@@ -318,31 +319,43 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState)
 
+  // Track whether the initial load from storage has completed.
+  // Save effects must not fire before this — they would overwrite stored data
+  // with the empty initial state before the async reads finish.
+  const initializedRef = useRef(false)
+
   // Load persisted data on mount
   useEffect(() => {
     Promise.all([
       storage.getOverrides(),
       storage.getConstraints(),
       storage.getPlaylists(),
-    ]).then(([overrides, constraints, playlists]) => {
-      dispatch({ type: 'LOAD_OVERRIDES', payload: overrides })
-      dispatch({ type: 'SET_CONSTRAINTS', payload: constraints })
-      dispatch({ type: 'SET_PLAYLISTS', payload: playlists })
-    })
+    ])
+      .then(([overrides, constraints, playlists]) => {
+        dispatch({ type: 'LOAD_OVERRIDES', payload: overrides })
+        dispatch({ type: 'SET_CONSTRAINTS', payload: constraints })
+        dispatch({ type: 'SET_PLAYLISTS', payload: playlists })
+      })
+      .finally(() => {
+        initializedRef.current = true
+      })
   }, [])
 
-  // Persist overrides whenever they change
+  // Persist overrides whenever they change (skipped until initialization completes)
   useEffect(() => {
+    if (!initializedRef.current) return
     storage.saveOverrides(state.overrides)
   }, [state.overrides])
 
   // Persist constraints whenever they change
   useEffect(() => {
+    if (!initializedRef.current) return
     storage.saveConstraints(state.constraints)
   }, [state.constraints])
 
   // Persist playlists whenever they change
   useEffect(() => {
+    if (!initializedRef.current) return
     storage.savePlaylists(state.connectedPlaylists)
   }, [state.connectedPlaylists])
 
