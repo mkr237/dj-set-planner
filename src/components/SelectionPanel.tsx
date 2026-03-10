@@ -3,7 +3,7 @@ import { useAppContext } from '../context/AppContext'
 import { CSVImport } from './CSVImport'
 import { CandidatePanel } from './CandidatePanel'
 import { TrackEditModal } from './TrackEditModal'
-import type { Track } from '../types'
+import type { ResolvedTrack } from '../types'
 
 // ---------------------------------------------------------------------------
 // FullLibraryView
@@ -14,9 +14,9 @@ function TrackRow({
   onAdd,
   onEdit,
 }: {
-  track: Track
+  track: ResolvedTrack
   onAdd: (id: string) => void
-  onEdit: (track: Track) => void
+  onEdit: (track: ResolvedTrack) => void
 }) {
   const isIncomplete = track.bpm === null || track.key === null
 
@@ -24,7 +24,7 @@ function TrackRow({
     <div className="w-full flex items-stretch border-b border-border/50 group hover:bg-surface-3 transition-colors duration-150">
       {/* Main area — click to add to set */}
       <button
-        onClick={() => onAdd(track.id)}
+        onClick={() => onAdd(track.spotifyId)}
         className="flex-1 min-w-0 flex items-center gap-3 px-4 py-2.5 text-left active:opacity-70"
       >
         <div className="flex-1 min-w-0">
@@ -67,10 +67,10 @@ function TrackRow({
 function FullLibraryView() {
   const { state, dispatch } = useAppContext()
   const { tracks } = state
-  const [editingTrack, setEditingTrack] = useState<Track | null>(null)
+  const [editingTrack, setEditingTrack] = useState<ResolvedTrack | null>(null)
 
-  function handleAdd(trackId: string) {
-    dispatch({ type: 'ADD_TRACK_TO_SET', payload: trackId })
+  function handleAdd(spotifyId: string) {
+    dispatch({ type: 'ADD_TRACK_TO_SET', payload: spotifyId })
   }
 
   return (
@@ -84,7 +84,7 @@ function FullLibraryView() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {tracks.map(track => (
-            <TrackRow key={track.id} track={track} onAdd={handleAdd} onEdit={setEditingTrack} />
+            <TrackRow key={track.spotifyId} track={track} onAdd={handleAdd} onEdit={setEditingTrack} />
           ))}
         </div>
       </div>
@@ -118,8 +118,8 @@ export function SelectionPanel() {
       ? currentSet.tracks.reduce((a, b) => (a.position > b.position ? a : b))
       : null
 
-  const currentTrack: Track | undefined = lastSetTrack
-    ? tracks.find(t => t.id === lastSetTrack.trackId)
+  const currentTrack: ResolvedTrack | undefined = lastSetTrack
+    ? tracks.find(t => t.spotifyId === lastSetTrack.trackId)
     : undefined
 
   const hasNoTracks = tracks.length === 0

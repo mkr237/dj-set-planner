@@ -1,11 +1,11 @@
-import type { DJSet, Track } from '../types'
+import type { DJSet, ResolvedTrack } from '../types'
 
 const EXPORT_VERSION = 1
 
 export interface SetExportBundle {
   version: typeof EXPORT_VERSION
   set: DJSet
-  tracks: Track[]
+  tracks: ResolvedTrack[]
 }
 
 // ---------------------------------------------------------------------------
@@ -13,9 +13,9 @@ export interface SetExportBundle {
 // ---------------------------------------------------------------------------
 
 /** Serialise a set + its referenced tracks and trigger a browser download. */
-export function exportSetAsJSON(set: DJSet, library: Track[]): void {
+export function exportSetAsJSON(set: DJSet, library: ResolvedTrack[]): void {
   const referencedIds = new Set(set.tracks.map(st => st.trackId))
-  const tracks = library.filter(t => referencedIds.has(t.id))
+  const tracks = library.filter(t => referencedIds.has(t.spotifyId))
 
   const bundle: SetExportBundle = { version: EXPORT_VERSION, set, tracks }
   const json = JSON.stringify(bundle, null, 2)
@@ -35,7 +35,7 @@ export function exportSetAsJSON(set: DJSet, library: Track[]): void {
 
 export interface ImportSetResult {
   set: DJSet
-  newTracks: Track[]   // tracks not already in the library (by id)
+  newTracks: ResolvedTrack[]  // tracks not already in the library (by spotifyId)
 }
 
 export class SetImportError extends Error {}
@@ -43,7 +43,7 @@ export class SetImportError extends Error {}
 /** Parse and validate a set export bundle from raw JSON text. */
 export function parseSetBundle(
   jsonText: string,
-  existingLibrary: Track[],
+  existingLibrary: ResolvedTrack[],
 ): ImportSetResult {
   let parsed: unknown
   try {
@@ -70,8 +70,8 @@ export function parseSetBundle(
     throw new SetImportError('Missing track data.')
   }
 
-  const existingIds = new Set(existingLibrary.map(t => t.id))
-  const newTracks = bundle.tracks.filter(t => !existingIds.has(t.id))
+  const existingIds = new Set(existingLibrary.map(t => t.spotifyId))
+  const newTracks = bundle.tracks.filter(t => !existingIds.has(t.spotifyId))
 
   return { set: bundle.set, newTracks }
 }

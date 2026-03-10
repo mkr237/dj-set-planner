@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAppContext } from '../context/AppContext'
-import type { CamelotKey, EnergyLevel, Track } from '../types'
+import type { CamelotKey, EnergyLevel, ResolvedTrack, TrackOverrides } from '../types'
 
 const CAMELOT_KEYS: CamelotKey[] = [
   '1A', '2A', '3A', '4A', '5A', '6A', '7A', '8A', '9A', '10A', '11A', '12A',
@@ -11,16 +11,12 @@ const ENERGY_LEVELS: EnergyLevel[] = ['Low', 'Mid', 'High', 'Unknown']
 
 const VALID_CAMELOT_KEYS = new Set<string>(CAMELOT_KEYS)
 
-export function TrackEditModal({ track, onClose }: { track: Track; onClose: () => void }) {
+export function TrackEditModal({ track, onClose }: { track: ResolvedTrack; onClose: () => void }) {
   const { dispatch } = useAppContext()
 
-  const [title, setTitle] = useState(track.title)
-  const [artist, setArtist] = useState(track.artist)
   const [bpm, setBpm] = useState(track.bpm !== null ? String(track.bpm) : '')
   const [key, setKey] = useState<string>(track.key ?? '')
   const [energy, setEnergy] = useState<EnergyLevel>(track.energy)
-  const [genre, setGenre] = useState(track.genre ?? '')
-  const [label, setLabel] = useState(track.label ?? '')
   const [notes, setNotes] = useState(track.notes ?? '')
 
   useEffect(() => {
@@ -31,26 +27,22 @@ export function TrackEditModal({ track, onClose }: { track: Track; onClose: () =
     return () => window.removeEventListener('keydown', handleKey)
   }, [onClose])
 
-  const titleTrimmed = title.trim()
-  const artistTrimmed = artist.trim()
-  const bpmParsed = bpm.trim() ? Number(bpm.trim()) : null
-  const bpmValid = bpmParsed === null || (Number.isFinite(bpmParsed) && bpmParsed > 0)
-  const canSave = titleTrimmed.length > 0 && artistTrimmed.length > 0 && bpmValid
+  const bpmParsed = bpm.trim() ? Number(bpm.trim()) : undefined
+  const bpmValid = bpmParsed === undefined || (Number.isFinite(bpmParsed) && bpmParsed > 0)
+  const canSave = bpmValid
 
   function handleSave() {
     if (!canSave) return
-    const updatedTrack: Track = {
-      ...track,
-      title: titleTrimmed,
-      artist: artistTrimmed,
-      bpm: bpmParsed,
-      key: VALID_CAMELOT_KEYS.has(key) ? (key as CamelotKey) : null,
+
+    const override: TrackOverrides = {
+      spotifyId: track.spotifyId,
+      ...(bpmParsed !== undefined && { bpm: bpmParsed }),
+      ...(VALID_CAMELOT_KEYS.has(key) && { key: key as CamelotKey }),
       energy,
-      genre: genre.trim() || undefined,
-      label: label.trim() || undefined,
       notes: notes.trim() || undefined,
     }
-    dispatch({ type: 'EDIT_TRACK', payload: updatedTrack })
+
+    dispatch({ type: 'SET_OVERRIDE', payload: override })
     onClose()
   }
 
@@ -61,7 +53,7 @@ export function TrackEditModal({ track, onClose }: { track: Track; onClose: () =
   const inputClass =
     'w-full bg-surface-3 border border-border rounded-lg px-3 py-1.5 text-sm text-slate-200 focus:outline-none focus:border-accent placeholder:text-slate-600'
   const labelClass = 'text-xs text-slate-500 font-medium'
-  const incompleteIndicator = track.bpm === null || track.key === null
+  const isIncomplete = track.bpm === null || track.key === null
 
   return (
     <div
@@ -76,9 +68,10 @@ export function TrackEditModal({ track, onClose }: { track: Track; onClose: () =
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-base font-semibold text-white">Edit Track</h2>
-            {incompleteIndicator && (
-              <p className="text-xs text-amber-600/80 mt-0.5">Missing BPM or key — fill in to enable candidate ranking</p>
+            <h2 className="text-base font-semibold text-white">{track.title}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{track.artist}</p>
+            {isIncomplete && (
+              <p className="text-xs text-amber-600/80 mt-1">Missing BPM or key — fill in to enable candidate ranking</p>
             )}
           </div>
           <button
@@ -90,39 +83,18 @@ export function TrackEditModal({ track, onClose }: { track: Track; onClose: () =
         </div>
 
         <div className="space-y-3">
-          {/* Title */}
-          <div>
-            <label className={labelClass}>Title <span className="text-slate-700">*</span></label>
-            <input
-              autoFocus
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className={`${inputClass} mt-1`}
-              placeholder="Track title"
-            />
-          </div>
-
-          {/* Artist */}
-          <div>
-            <label className={labelClass}>Artist <span className="text-slate-700">*</span></label>
-            <input
-              value={artist}
-              onChange={e => setArtist(e.target.value)}
-              className={`${inputClass} mt-1`}
-              placeholder="Artist name"
-            />
-          </div>
-
           {/* BPM + Key row */}
           <div className="flex gap-3">
             <div className="flex-1">
               <label className={labelClass}>
                 BPM
+                {track.hasOverrides.bpm && <span className="text-accent-hover ml-1">·</span>}
                 {bpm && !bpmValid && (
                   <span className="text-red-500 ml-1">invalid</span>
                 )}
               </label>
               <input
+                autoFocus
                 type="number"
                 min={1}
                 max={300}
@@ -133,7 +105,10 @@ export function TrackEditModal({ track, onClose }: { track: Track; onClose: () =
               />
             </div>
             <div className="flex-1">
-              <label className={labelClass}>Camelot Key</label>
+              <label className={labelClass}>
+                Camelot Key
+                {track.hasOverrides.key && <span className="text-accent-hover ml-1">·</span>}
+              </label>
               <select
                 value={key}
                 onChange={e => setKey(e.target.value)}
@@ -149,7 +124,10 @@ export function TrackEditModal({ track, onClose }: { track: Track; onClose: () =
 
           {/* Energy */}
           <div>
-            <label className={labelClass}>Energy</label>
+            <label className={labelClass}>
+              Energy
+              {track.hasOverrides.energy && <span className="text-accent-hover ml-1">·</span>}
+            </label>
             <select
               value={energy}
               onChange={e => setEnergy(e.target.value as EnergyLevel)}
@@ -161,35 +139,14 @@ export function TrackEditModal({ track, onClose }: { track: Track; onClose: () =
             </select>
           </div>
 
-          {/* Optional fields */}
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className={labelClass}>Genre</label>
-              <input
-                value={genre}
-                onChange={e => setGenre(e.target.value)}
-                className={`${inputClass} mt-1`}
-                placeholder="optional"
-              />
-            </div>
-            <div className="flex-1">
-              <label className={labelClass}>Label</label>
-              <input
-                value={label}
-                onChange={e => setLabel(e.target.value)}
-                className={`${inputClass} mt-1`}
-                placeholder="optional"
-              />
-            </div>
-          </div>
-
+          {/* Notes */}
           <div>
             <label className={labelClass}>Notes</label>
             <input
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className={`${inputClass} mt-1`}
-              placeholder="optional"
+              placeholder="optional DJ notes"
             />
           </div>
         </div>

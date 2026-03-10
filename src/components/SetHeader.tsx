@@ -67,10 +67,7 @@ export function SetHeader() {
       const text = ev.target?.result
       if (typeof text !== 'string') return
       try {
-        const { set, newTracks } = parseSetBundle(text, tracks)
-        if (newTracks.length > 0) {
-          dispatch({ type: 'SET_TRACKS', payload: [...tracks, ...newTracks] })
-        }
+        const { set } = parseSetBundle(text, tracks)
         dispatch({ type: 'LOAD_SET', payload: set })
       } catch (err) {
         setImportError(err instanceof SetImportError ? err.message : 'Import failed.')

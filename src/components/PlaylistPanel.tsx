@@ -2,14 +2,14 @@ import { useState } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { spotifyService } from '../spotify'
 import { convertSpotifyTrack } from '../spotify/trackConverter'
-import type { ConnectedPlaylist, Track } from '../types'
+import type { ConnectedPlaylist, SpotifyTrack } from '../types'
 import type { SpotifyApiAudioFeatures } from '../spotify/types'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function fetchTracksForPlaylist(playlistId: string): Promise<Track[]> {
+async function fetchTracksForPlaylist(playlistId: string): Promise<SpotifyTrack[]> {
   const rawTracks = await spotifyService.getPlaylistTracks(playlistId)
   const ids = rawTracks.map(t => t.id!)
   const features = await spotifyService.getAudioFeatures(ids)

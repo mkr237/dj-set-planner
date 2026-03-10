@@ -6,33 +6,44 @@ import {
   type ReactNode,
   type Dispatch,
 } from 'react'
-import type { Track, DJSet, MixConstraints, SetTrack, ConnectedPlaylist } from '../types'
+import type {
+  SpotifyTrack,
+  TrackOverrides,
+  ResolvedTrack,
+  DJSet,
+  MixConstraints,
+  SetTrack,
+  ConnectedPlaylist,
+} from '../types'
+import { resolveTrack } from '../utils/trackResolver'
 import { storage } from '../storage'
 
 // ---------------------------------------------------------------------------
-// Derive the effective track pool from the per-playlist cache.
+// Derive the effective resolved track pool from the per-playlist cache.
 // Includes tracks from enabled playlists + any track already in the current
 // set (so the timeline stays intact even if its playlist is disabled).
 // ---------------------------------------------------------------------------
 
 function recomputeTracks(
-  cache: Record<string, Track[]>,
+  cache: Record<string, SpotifyTrack[]>,
   playlists: ConnectedPlaylist[],
-  currentSet: DJSet | null
-): Track[] {
+  currentSet: DJSet | null,
+  overrides: TrackOverrides[],
+): ResolvedTrack[] {
   const enabledIds = new Set(playlists.filter(p => p.enabled).map(p => p.spotifyId))
   const setTrackIds = new Set(currentSet?.tracks.map(t => t.trackId) ?? [])
+  const overrideMap = new Map(overrides.map(o => [o.spotifyId, o]))
 
   const seen = new Set<string>()
-  const result: Track[] = []
+  const result: ResolvedTrack[] = []
 
   for (const [playlistId, tracks] of Object.entries(cache)) {
     const inEnabledPlaylist = enabledIds.has(playlistId)
     for (const track of tracks) {
-      if (seen.has(track.id)) continue
-      seen.add(track.id)
-      if (inEnabledPlaylist || setTrackIds.has(track.id)) {
-        result.push(track)
+      if (seen.has(track.spotifyId)) continue
+      seen.add(track.spotifyId)
+      if (inEnabledPlaylist || setTrackIds.has(track.spotifyId)) {
+        result.push(resolveTrack(track, overrideMap.get(track.spotifyId) ?? null))
       }
     }
   }
@@ -45,9 +56,11 @@ function recomputeTracks(
 // ---------------------------------------------------------------------------
 
 export interface AppState {
-  tracks: Track[]
-  /** Per-playlist track cache (session-only, not persisted). */
-  playlistTracksCache: Record<string, Track[]>
+  tracks: ResolvedTrack[]
+  /** Per-playlist Spotify track cache (session-only, not persisted). */
+  playlistTracksCache: Record<string, SpotifyTrack[]>
+  /** User overrides to Spotify data (persisted). */
+  overrides: TrackOverrides[]
   /** IDs of playlists whose tracks are currently being fetched. */
   fetchingPlaylistIds: string[]
   currentSet: DJSet | null
@@ -64,6 +77,7 @@ const DEFAULT_CONSTRAINTS: MixConstraints = {
 const initialState: AppState = {
   tracks: [],
   playlistTracksCache: {},
+  overrides: [],
   fetchingPlaylistIds: [],
   currentSet: null,
   constraints: DEFAULT_CONSTRAINTS,
@@ -75,19 +89,19 @@ const initialState: AppState = {
 // ---------------------------------------------------------------------------
 
 export type AppAction =
-  | { type: 'SET_TRACKS'; payload: Track[] }
-  | { type: 'EDIT_TRACK'; payload: Track }
+  | { type: 'LOAD_OVERRIDES'; payload: TrackOverrides[] }
+  | { type: 'SET_OVERRIDE'; payload: TrackOverrides }
   | { type: 'SET_CONSTRAINTS'; payload: MixConstraints }
   | { type: 'NEW_SET' }
   | { type: 'LOAD_SET'; payload: DJSet }
   | { type: 'RENAME_SET'; payload: string }
-  | { type: 'ADD_TRACK_TO_SET'; payload: string }            // trackId
+  | { type: 'ADD_TRACK_TO_SET'; payload: string }            // spotifyId
   | { type: 'REMOVE_TRACK_FROM_SET'; payload: number }       // position index
   | { type: 'REORDER_SET_TRACKS'; payload: SetTrack[] }
   | { type: 'SET_PLAYLISTS'; payload: ConnectedPlaylist[] }
   | { type: 'TOGGLE_PLAYLIST'; payload: string }             // spotifyId
   | { type: 'SET_ALL_PLAYLISTS_ENABLED'; payload: boolean }
-  | { type: 'CACHE_PLAYLIST_TRACKS'; payload: { playlistId: string; tracks: Track[] } }
+  | { type: 'CACHE_PLAYLIST_TRACKS'; payload: { playlistId: string; tracks: SpotifyTrack[] } }
   | { type: 'SET_PLAYLIST_FETCHING'; payload: { playlistId: string; fetching: boolean } }
 
 // ---------------------------------------------------------------------------
@@ -96,14 +110,34 @@ export type AppAction =
 
 export function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
-    case 'SET_TRACKS':
-      return { ...state, tracks: action.payload }
-
-    case 'EDIT_TRACK':
+    case 'LOAD_OVERRIDES':
       return {
         ...state,
-        tracks: state.tracks.map(t => t.id === action.payload.id ? action.payload : t),
+        overrides: action.payload,
+        tracks: recomputeTracks(
+          state.playlistTracksCache,
+          state.connectedPlaylists,
+          state.currentSet,
+          action.payload,
+        ),
       }
+
+    case 'SET_OVERRIDE': {
+      const idx = state.overrides.findIndex(o => o.spotifyId === action.payload.spotifyId)
+      const newOverrides = idx >= 0
+        ? state.overrides.map((o, i) => (i === idx ? action.payload : o))
+        : [...state.overrides, action.payload]
+      return {
+        ...state,
+        overrides: newOverrides,
+        tracks: recomputeTracks(
+          state.playlistTracksCache,
+          state.connectedPlaylists,
+          state.currentSet,
+          newOverrides,
+        ),
+      }
+    }
 
     case 'SET_CONSTRAINTS':
       return { ...state, constraints: action.payload }
@@ -193,7 +227,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         connectedPlaylists: updatedPlaylists,
-        tracks: recomputeTracks(state.playlistTracksCache, updatedPlaylists, state.currentSet),
+        tracks: recomputeTracks(
+          state.playlistTracksCache,
+          updatedPlaylists,
+          state.currentSet,
+          state.overrides,
+        ),
       }
     }
 
@@ -205,7 +244,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         connectedPlaylists: updatedPlaylists,
-        tracks: recomputeTracks(state.playlistTracksCache, updatedPlaylists, state.currentSet),
+        tracks: recomputeTracks(
+          state.playlistTracksCache,
+          updatedPlaylists,
+          state.currentSet,
+          state.overrides,
+        ),
       }
     }
 
@@ -217,7 +261,12 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         playlistTracksCache: newCache,
-        tracks: recomputeTracks(newCache, state.connectedPlaylists, state.currentSet),
+        tracks: recomputeTracks(
+          newCache,
+          state.connectedPlaylists,
+          state.currentSet,
+          state.overrides,
+        ),
       }
     }
 
@@ -257,20 +306,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Load persisted data on mount
   useEffect(() => {
     Promise.all([
-      storage.getTracks(),
+      storage.getOverrides(),
       storage.getConstraints(),
       storage.getPlaylists(),
-    ]).then(([tracks, constraints, playlists]) => {
-      dispatch({ type: 'SET_TRACKS', payload: tracks })
+    ]).then(([overrides, constraints, playlists]) => {
+      dispatch({ type: 'LOAD_OVERRIDES', payload: overrides })
       dispatch({ type: 'SET_CONSTRAINTS', payload: constraints })
       dispatch({ type: 'SET_PLAYLISTS', payload: playlists })
     })
   }, [])
 
-  // Persist tracks whenever they change
+  // Persist overrides whenever they change
   useEffect(() => {
-    storage.saveTracks(state.tracks)
-  }, [state.tracks])
+    storage.saveOverrides(state.overrides)
+  }, [state.overrides])
 
   // Persist constraints whenever they change
   useEffect(() => {

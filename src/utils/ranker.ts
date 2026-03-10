@@ -1,8 +1,8 @@
-import type { Track, MixConstraints } from '../types'
+import type { ResolvedTrack, MixConstraints } from '../types'
 import { getCamelotTier } from './camelot'
 
 export interface RankedCandidate {
-  track: Track
+  track: ResolvedTrack
   camelotTier: 1 | 2 | 3 | 4
   bpmDelta: number
   overallScore: number
@@ -27,8 +27,8 @@ export interface RankedCandidate {
  * @param overrides     Per-step overrides merged on top of constraints
  */
 export function rankCandidates(
-  currentTrack: Track,
-  library: Track[],
+  currentTrack: ResolvedTrack,
+  library: ResolvedTrack[],
   constraints: MixConstraints,
   overrides?: Partial<MixConstraints>,
 ): RankedCandidate[] {
@@ -40,7 +40,7 @@ export function rankCandidates(
   const results: RankedCandidate[] = []
 
   for (const track of library) {
-    if (track.id === currentTrack.id) continue
+    if (track.spotifyId === currentTrack.spotifyId) continue
 
     // Incomplete tracks cannot be ranked
     if (track.bpm === null || track.key === null) continue

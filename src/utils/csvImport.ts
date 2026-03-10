@@ -1,5 +1,5 @@
 import Papa from 'papaparse'
-import type { Track, CamelotKey, EnergyLevel } from '../types'
+import type { SpotifyTrack, CamelotKey, EnergyLevel } from '../types'
 
 const REQUIRED_COLUMNS = ['title', 'artist', 'bpm', 'key', 'energy'] as const
 
@@ -11,7 +11,7 @@ const VALID_CAMELOT_KEYS = new Set<string>([
 const VALID_ENERGY_LEVELS = new Set<string>(['Low', 'Mid', 'High'])
 
 export interface ImportResult {
-  tracks: Track[]
+  tracks: SpotifyTrack[]
   errors: ImportError[]    // rows that were skipped entirely
   warnings: ImportError[]  // rows imported but with missing bpm/key
 }
@@ -61,7 +61,7 @@ export function parseCSV(csvText: string): ImportResult {
     }
   }
 
-  const tracks: Track[] = []
+  const tracks: SpotifyTrack[] = []
   const errors: ImportError[] = []
   const warnings: ImportError[] = []
 
@@ -115,15 +115,13 @@ export function parseCSV(csvText: string): ImportResult {
       : 'Unknown'
 
     tracks.push({
-      id: crypto.randomUUID(),
+      spotifyId: crypto.randomUUID(),
       title,
       artist,
       bpm,
       key,
       energy,
-      genre: row.genre?.trim() || undefined,
-      label: row.label?.trim() || undefined,
-      notes: row.notes?.trim() || undefined,
+      spotifyUri: '',
     })
   })
 

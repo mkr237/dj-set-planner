@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { rankCandidates, type RankedCandidate } from '../utils/ranker'
 import { TIER_COLORS } from '../utils/tierColors'
-import type { EnergyLevel, MixConstraints, Track } from '../types'
+import type { EnergyLevel, MixConstraints, ResolvedTrack } from '../types'
 
 // ---------------------------------------------------------------------------
 // Energy direction helpers
@@ -78,7 +78,7 @@ function CandidateRow({
 
   return (
     <button
-      onClick={() => onAdd(track.id)}
+      onClick={() => onAdd(track.spotifyId)}
       className={`w-full text-left flex items-stretch border-b border-border/50 border-l-4 ${colors.border} ${colors.row} transition-all duration-150 active:opacity-70 active:scale-[0.995] ${
         inSet ? 'opacity-50 hover:opacity-90' : ''
       }`}
@@ -124,7 +124,7 @@ function CandidateRow({
 // CandidatePanel
 // ---------------------------------------------------------------------------
 
-export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
+export function CandidatePanel({ currentTrack }: { currentTrack: ResolvedTrack }) {
   const { state, dispatch } = useAppContext()
   const { tracks, constraints, currentSet } = state
 
@@ -138,7 +138,7 @@ export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
     setTierOverride(null)
     setEnergyDirection('any')
     setShowInSet(false)
-  }, [currentTrack.id])
+  }, [currentTrack.spotifyId])
 
   // Map of trackId → 1-based position for tracks already in the set
   const setPositionMap = new Map<string, number>()
@@ -157,9 +157,9 @@ export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
   const allCandidates = rankCandidates(currentTrack, tracks, constraints, overrides)
   const candidates = showInSet
     ? allCandidates
-    : allCandidates.filter(c => !setPositionMap.has(c.track.id))
+    : allCandidates.filter(c => !setPositionMap.has(c.track.spotifyId))
 
-  const hiddenInSetCount = showInSet ? 0 : allCandidates.filter(c => setPositionMap.has(c.track.id)).length
+  const hiddenInSetCount = showInSet ? 0 : allCandidates.filter(c => setPositionMap.has(c.track.spotifyId)).length
 
   function handleAdd(trackId: string) {
     dispatch({ type: 'ADD_TRACK_TO_SET', payload: trackId })
@@ -272,10 +272,10 @@ export function CandidatePanel({ currentTrack }: { currentTrack: Track }) {
         <div className="overflow-y-auto flex-1">
           {candidates.map(c => (
             <CandidateRow
-              key={c.track.id}
+              key={c.track.spotifyId}
               candidate={c}
               onAdd={handleAdd}
-              setPosition={setPositionMap.get(c.track.id)}
+              setPosition={setPositionMap.get(c.track.spotifyId)}
             />
           ))}
         </div>

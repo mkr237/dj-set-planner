@@ -23,7 +23,7 @@ function UploadIcon({ className }: { className?: string }) {
 }
 
 export function CSVImport() {
-  const { dispatch } = useAppContext()
+  useAppContext() // context access retained for future use
   const inputRef = useRef<HTMLInputElement>(null)
   const [errors, setErrors] = useState<ImportError[]>([])
   const [warnings, setWarnings] = useState<ImportError[]>([])
@@ -39,9 +39,6 @@ export function CSVImport() {
       setErrors(parseErrors)
       setWarnings(parseWarnings)
       setImportedCount(tracks.length)
-      if (tracks.length > 0) {
-        dispatch({ type: 'SET_TRACKS', payload: tracks })
-      }
     }
     reader.readAsText(file)
   }

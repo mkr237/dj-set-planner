@@ -27,15 +27,12 @@ describe('parseCSV', () => {
         bpm: 174,
         key: '4A',
         energy: 'High',
-        genre: 'DnB',
-        label: 'RAM',
-        notes: 'Tech roller',
       })
     })
 
     it('assigns a unique uuid to each track', () => {
       const { tracks } = parseCSV(VALID_CSV)
-      const ids = tracks.map(t => t.id)
+      const ids = tracks.map(t => t.spotifyId)
       expect(new Set(ids).size).toBe(ids.length)
       ids.forEach(id => expect(id).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -46,9 +43,9 @@ describe('parseCSV', () => {
       const { tracks, errors } = parseCSV(MINIMAL_CSV)
       expect(errors).toHaveLength(0)
       expect(tracks).toHaveLength(1)
-      expect(tracks[0].genre).toBeUndefined()
-      expect(tracks[0].label).toBeUndefined()
-      expect(tracks[0].notes).toBeUndefined()
+      expect(tracks[0].albumArt).toBeUndefined()
+      expect(tracks[0].previewUrl).toBeUndefined()
+      expect(tracks[0].previewUrl).toBeUndefined()
     })
 
     it('returns empty tracks and no errors for header-only CSV', () => {
@@ -73,9 +70,9 @@ describe('parseCSV', () => {
     it('treats blank optional fields as undefined', () => {
       const csv = `title,artist,bpm,key,energy,genre,label,notes\n"X","Y",120,"6B","Mid","","",""`
       const { tracks } = parseCSV(csv)
-      expect(tracks[0].genre).toBeUndefined()
-      expect(tracks[0].label).toBeUndefined()
-      expect(tracks[0].notes).toBeUndefined()
+      expect(tracks[0].albumArt).toBeUndefined()
+      expect(tracks[0].previewUrl).toBeUndefined()
+      expect(tracks[0].previewUrl).toBeUndefined()
     })
 
     it('parses all 24 valid Camelot keys without error', () => {

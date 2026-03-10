@@ -1,10 +1,10 @@
-import type { DJSet, MixConstraints, Track, ConnectedPlaylist } from '../types'
+import type { DJSet, MixConstraints, TrackOverrides, ConnectedPlaylist } from '../types'
 import type { SpotifyAuth } from '../spotify/types'
 import type { StorageService } from './types'
 import { SPOTIFY_AUTH_KEY } from '../spotify/SpotifyService'
 
 const KEYS = {
-  tracks: 'djsp:tracks',
+  overrides: 'djsp:overrides',
   sets: 'djsp:sets',
   constraints: 'djsp:constraints',
   playlists: 'djsp:playlists',
@@ -28,12 +28,12 @@ function write<T>(key: string, value: T): void {
 }
 
 export class LocalStorageService implements StorageService {
-  getTracks(): Promise<Track[]> {
-    return Promise.resolve(read<Track[]>(KEYS.tracks, []))
+  getOverrides(): Promise<TrackOverrides[]> {
+    return Promise.resolve(read<TrackOverrides[]>(KEYS.overrides, []))
   }
 
-  saveTracks(tracks: Track[]): Promise<void> {
-    write(KEYS.tracks, tracks)
+  saveOverrides(overrides: TrackOverrides[]): Promise<void> {
+    write(KEYS.overrides, overrides)
     return Promise.resolve()
   }
 

@@ -3,13 +3,13 @@ import { useAppContext } from '../context/AppContext'
 import { getCamelotTier } from '../utils/camelot'
 import { TIER_COLORS } from '../utils/tierColors'
 import { TrackEditModal } from './TrackEditModal'
-import type { SetTrack, Track } from '../types'
+import type { SetTrack, ResolvedTrack } from '../types'
 
 // ---------------------------------------------------------------------------
 // Transition badge shown between consecutive tracks
 // ---------------------------------------------------------------------------
 
-function TransitionBadge({ from, to }: { from: Track; to: Track }) {
+function TransitionBadge({ from, to }: { from: ResolvedTrack; to: ResolvedTrack }) {
   const bpmDelta =
     from.bpm !== null && to.bpm !== null ? Math.abs(to.bpm - from.bpm) : null
 
@@ -66,7 +66,7 @@ function TimelineTrack({
   onDragEnd,
 }: {
   position: number
-  track: Track
+  track: ResolvedTrack
   isDragging: boolean
   isDropTarget: boolean
   onRemove: () => void
@@ -148,7 +148,7 @@ function TimelineTrack({
 // SetTimeline
 // ---------------------------------------------------------------------------
 
-type Resolved = { setTrack: SetTrack; track: Track }
+type Resolved = { setTrack: SetTrack; track: ResolvedTrack }
 
 export function SetTimeline() {
   const { state, dispatch } = useAppContext()
@@ -156,7 +156,7 @@ export function SetTimeline() {
 
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
-  const [editingTrack, setEditingTrack] = useState<Track | null>(null)
+  const [editingTrack, setEditingTrack] = useState<ResolvedTrack | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Smooth-scroll to the bottom when a new track is appended
@@ -188,7 +188,7 @@ export function SetTimeline() {
   const resolvedTracks: Resolved[] = currentSet.tracks
     .slice()
     .sort((a, b) => a.position - b.position)
-    .map(st => ({ setTrack: st, track: tracks.find(t => t.id === st.trackId) }))
+    .map(st => ({ setTrack: st, track: tracks.find(t => t.spotifyId === st.trackId) }))
     .filter((r): r is Resolved => r.track !== undefined)
 
   function handleDragOver(e: React.DragEvent, index: number) {

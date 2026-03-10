@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { LocalStorageService } from './localStorage'
-import type { DJSet, MixConstraints, Track } from '../types'
+import type { DJSet, MixConstraints, TrackOverrides } from '../types'
 
-const makeTrack = (overrides: Partial<Track> = {}): Track => ({
-  id: 'track-1',
-  title: 'Pharaoh',
-  artist: 'Calyx & TeeBee',
+const makeOverride = (overrides: Partial<TrackOverrides> = {}): TrackOverrides => ({
+  spotifyId: 'track-1',
   bpm: 174,
   key: '4A',
   energy: 'High',
@@ -29,25 +27,25 @@ describe('LocalStorageService', () => {
     service = new LocalStorageService()
   })
 
-  // --- Tracks ---
+  // --- Overrides ---
 
-  describe('tracks', () => {
-    it('returns empty array when no tracks stored', async () => {
-      expect(await service.getTracks()).toEqual([])
+  describe('overrides', () => {
+    it('returns empty array when no overrides stored', async () => {
+      expect(await service.getOverrides()).toEqual([])
     })
 
-    it('saves and retrieves tracks', async () => {
-      const tracks = [makeTrack(), makeTrack({ id: 'track-2', title: 'Titan' })]
-      await service.saveTracks(tracks)
-      expect(await service.getTracks()).toEqual(tracks)
+    it('saves and retrieves overrides', async () => {
+      const overrides = [makeOverride(), makeOverride({ spotifyId: 'track-2', bpm: 140 })]
+      await service.saveOverrides(overrides)
+      expect(await service.getOverrides()).toEqual(overrides)
     })
 
-    it('overwrites existing tracks on save', async () => {
-      await service.saveTracks([makeTrack()])
-      await service.saveTracks([makeTrack({ id: 'track-2', title: 'New' })])
-      const result = await service.getTracks()
+    it('overwrites existing overrides on save', async () => {
+      await service.saveOverrides([makeOverride()])
+      await service.saveOverrides([makeOverride({ spotifyId: 'track-2' })])
+      const result = await service.getOverrides()
       expect(result).toHaveLength(1)
-      expect(result[0].id).toBe('track-2')
+      expect(result[0].spotifyId).toBe('track-2')
     })
   })
 
@@ -140,10 +138,10 @@ describe('LocalStorageService', () => {
 
   // --- Isolation ---
 
-  it('tracks and sets are stored under separate keys', async () => {
-    await service.saveTracks([makeTrack()])
+  it('overrides and sets are stored under separate keys', async () => {
+    await service.saveOverrides([makeOverride()])
     await service.saveSet(makeSet())
-    expect(localStorage.getItem('djsp:tracks')).not.toBeNull()
+    expect(localStorage.getItem('djsp:overrides')).not.toBeNull()
     expect(localStorage.getItem('djsp:sets')).not.toBeNull()
   })
 })

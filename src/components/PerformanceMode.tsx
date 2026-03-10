@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { getCamelotTier } from '../utils/camelot'
 import { TIER_COLORS } from '../utils/tierColors'
-import type { Track } from '../types'
+import type { ResolvedTrack } from '../types'
 
-type Resolved = { track: Track }
+type Resolved = { track: ResolvedTrack }
 
 // ---------------------------------------------------------------------------
 // SetProgress
@@ -73,7 +73,7 @@ export function PerformanceMode({ onExit }: { onExit: () => void }) {
     .slice()
     .sort((a, b) => a.position - b.position)
     .flatMap(st => {
-      const track = tracks.find(t => t.id === st.trackId)
+      const track = tracks.find(t => t.spotifyId === st.trackId)
       return track ? [{ track }] : []
     })
 
