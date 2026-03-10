@@ -174,7 +174,7 @@ export function SetTimeline() {
         <div>
           <p className="text-slate-400 font-medium text-sm">No tracks yet</p>
           <p className="text-xs text-slate-600 mt-1">
-            Pick a starting track from the right panel
+            Pick a starting track from the centre panel
           </p>
         </div>
         <div className="flex items-center gap-1 text-slate-700 text-xs select-none">

@@ -4,6 +4,7 @@ import { useAppContext } from './context/AppContext'
 import { SetHeader } from './components/SetHeader'
 import { SetTimeline } from './components/SetTimeline'
 import { SelectionPanel } from './components/SelectionPanel'
+import { PlaylistPanel } from './components/PlaylistPanel'
 import { ConstraintModal } from './components/ConstraintModal'
 import { SavedSetsDrawer } from './components/SavedSetsDrawer'
 import { PerformanceMode } from './components/PerformanceMode'
@@ -55,16 +56,21 @@ function AppShell() {
         </div>
       </header>
 
-      {/* Two-panel layout */}
+      {/* Three-panel layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* SetPanel — left */}
-        <div className="w-96 shrink-0 flex flex-col bg-surface-1 border-r border-border">
+        {/* PlaylistPanel — left (~250px) */}
+        <div className="w-[250px] shrink-0 border-r border-border overflow-hidden">
+          <PlaylistPanel />
+        </div>
+
+        {/* CandidatePanel — centre (flexible) */}
+        <SelectionPanel />
+
+        {/* SetPanel — right (~350px) */}
+        <div className="w-[350px] shrink-0 flex flex-col bg-surface-1 border-l border-border">
           <SetHeader />
           <SetTimeline />
         </div>
-
-        {/* SelectionPanel — right */}
-        <SelectionPanel />
       </div>
 
       {showConstraints && (
