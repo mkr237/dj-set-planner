@@ -8,6 +8,7 @@ import { SelectionPanel } from './components/SelectionPanel'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { SpotifyConnectScreen } from './components/SpotifyConnectScreen'
 import { SettingsModal } from './components/SettingsModal'
+import { HelpModal } from './components/HelpModal'
 import { SavedSetsDrawer } from './components/SavedSetsDrawer'
 import { PerformanceMode } from './components/PerformanceMode'
 
@@ -65,6 +66,7 @@ function AppShell() {
   const { state } = useAppContext()
   const [mode, setMode] = useState<AppMode>('edit')
   const [showSettings, setShowSettings] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
   const [showDrawer, setShowDrawer] = useState(false)
 
   const { error: callbackError, completed: callbackCompleted, processing: callbackProcessing } =
@@ -127,10 +129,17 @@ function AppShell() {
           </button>
           <button
             onClick={() => setShowSettings(true)}
-            title="Mix constraints"
+            title="Settings"
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-surface-3 transition-colors text-base"
           >
             ⚙
+          </button>
+          <button
+            onClick={() => setShowHelp(true)}
+            title="Help"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-surface-3 transition-colors text-sm font-semibold"
+          >
+            ?
           </button>
           <button
             onClick={() => {
@@ -164,6 +173,9 @@ function AppShell() {
 
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
+      {showHelp && (
+        <HelpModal onClose={() => setShowHelp(false)} />
       )}
       {showDrawer && (
         <SavedSetsDrawer onClose={() => setShowDrawer(false)} />
