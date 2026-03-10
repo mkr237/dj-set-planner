@@ -7,7 +7,7 @@ import { SetTimeline } from './components/SetTimeline'
 import { SelectionPanel } from './components/SelectionPanel'
 import { PlaylistPanel } from './components/PlaylistPanel'
 import { SpotifyConnectScreen } from './components/SpotifyConnectScreen'
-import { ConstraintModal } from './components/ConstraintModal'
+import { SettingsModal } from './components/SettingsModal'
 import { SavedSetsDrawer } from './components/SavedSetsDrawer'
 import { PerformanceMode } from './components/PerformanceMode'
 
@@ -64,7 +64,7 @@ function useSpotifyCallback() {
 function AppShell() {
   const { state } = useAppContext()
   const [mode, setMode] = useState<AppMode>('edit')
-  const [showConstraints, setShowConstraints] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [showDrawer, setShowDrawer] = useState(false)
 
   const { error: callbackError, completed: callbackCompleted, processing: callbackProcessing } =
@@ -126,7 +126,7 @@ function AppShell() {
             ☰
           </button>
           <button
-            onClick={() => setShowConstraints(true)}
+            onClick={() => setShowSettings(true)}
             title="Mix constraints"
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-surface-3 transition-colors text-base"
           >
@@ -162,8 +162,8 @@ function AppShell() {
         </div>
       </div>
 
-      {showConstraints && (
-        <ConstraintModal onClose={() => setShowConstraints(false)} />
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
       {showDrawer && (
         <SavedSetsDrawer onClose={() => setShowDrawer(false)} />
