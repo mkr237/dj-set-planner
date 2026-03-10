@@ -1,12 +1,29 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { LocalStorageService } from './localStorage'
-import type { DJSet, MixConstraints, TrackOverrides } from '../types'
+import type { DJSet, MixConstraints, TrackOverrides, ConnectedPlaylist } from '../types'
+import type { SpotifyAuth } from '../spotify/types'
 
 const makeOverride = (overrides: Partial<TrackOverrides> = {}): TrackOverrides => ({
   spotifyId: 'track-1',
   bpm: 174,
   key: '4A',
   energy: 'High',
+  ...overrides,
+})
+
+const makePlaylist = (overrides: Partial<ConnectedPlaylist> = {}): ConnectedPlaylist => ({
+  spotifyId: 'playlist-1',
+  name: 'Test Playlist',
+  trackCount: 10,
+  enabled: false,
+  lastSynced: '2024-01-01T00:00:00.000Z',
+  ...overrides,
+})
+
+const makeAuth = (overrides: Partial<SpotifyAuth> = {}): SpotifyAuth => ({
+  accessToken: 'access-token',
+  refreshToken: 'refresh-token',
+  expiresAt: 9999999999999,
   ...overrides,
 })
 
@@ -46,6 +63,44 @@ describe('LocalStorageService', () => {
       const result = await service.getOverrides()
       expect(result).toHaveLength(1)
       expect(result[0].spotifyId).toBe('track-2')
+    })
+
+    it('getOverride returns null when not found', async () => {
+      expect(await service.getOverride('unknown')).toBeNull()
+    })
+
+    it('getOverride returns the correct entry by spotifyId', async () => {
+      await service.saveOverrides([makeOverride(), makeOverride({ spotifyId: 'track-2', bpm: 140 })])
+      const result = await service.getOverride('track-2')
+      expect(result?.bpm).toBe(140)
+    })
+
+    it('saveOverride inserts a new entry', async () => {
+      await service.saveOverride(makeOverride({ spotifyId: 'track-1' }))
+      await service.saveOverride(makeOverride({ spotifyId: 'track-2', bpm: 140 }))
+      expect(await service.getOverrides()).toHaveLength(2)
+    })
+
+    it('saveOverride updates an existing entry in place', async () => {
+      await service.saveOverride(makeOverride({ bpm: 174 }))
+      await service.saveOverride(makeOverride({ bpm: 180 }))
+      const all = await service.getOverrides()
+      expect(all).toHaveLength(1)
+      expect(all[0].bpm).toBe(180)
+    })
+
+    it('deleteOverride removes the correct entry', async () => {
+      await service.saveOverrides([makeOverride({ spotifyId: 'track-1' }), makeOverride({ spotifyId: 'track-2' })])
+      await service.deleteOverride('track-1')
+      const all = await service.getOverrides()
+      expect(all).toHaveLength(1)
+      expect(all[0].spotifyId).toBe('track-2')
+    })
+
+    it('deleteOverride on unknown id leaves other entries intact', async () => {
+      await service.saveOverrides([makeOverride()])
+      await service.deleteOverride('nonexistent')
+      expect(await service.getOverrides()).toHaveLength(1)
     })
   })
 
@@ -133,6 +188,61 @@ describe('LocalStorageService', () => {
       const result = await service.getConstraints()
       expect(result.bpmRange).toBe(15)
       expect(result.maxCamelotTier).toBe(4)
+    })
+  })
+
+  // --- Playlists ---
+
+  describe('playlists', () => {
+    it('returns empty array when no playlists stored', async () => {
+      expect(await service.getPlaylists()).toEqual([])
+    })
+
+    it('saves and retrieves playlists', async () => {
+      const playlists = [makePlaylist(), makePlaylist({ spotifyId: 'playlist-2', name: 'Second' })]
+      await service.savePlaylists(playlists)
+      expect(await service.getPlaylists()).toEqual(playlists)
+    })
+
+    it('overwrites previously saved playlists on save', async () => {
+      await service.savePlaylists([makePlaylist()])
+      await service.savePlaylists([makePlaylist({ spotifyId: 'playlist-2' })])
+      const result = await service.getPlaylists()
+      expect(result).toHaveLength(1)
+      expect(result[0].spotifyId).toBe('playlist-2')
+    })
+
+    it('persists the enabled flag', async () => {
+      await service.savePlaylists([makePlaylist({ enabled: true })])
+      const result = await service.getPlaylists()
+      expect(result[0].enabled).toBe(true)
+    })
+  })
+
+  // --- Spotify auth ---
+
+  describe('spotify auth', () => {
+    it('returns null when no auth stored', async () => {
+      expect(await service.getSpotifyAuth()).toBeNull()
+    })
+
+    it('saves and retrieves auth', async () => {
+      const auth = makeAuth()
+      await service.saveSpotifyAuth(auth)
+      expect(await service.getSpotifyAuth()).toEqual(auth)
+    })
+
+    it('overwrites previously saved auth', async () => {
+      await service.saveSpotifyAuth(makeAuth({ accessToken: 'old' }))
+      await service.saveSpotifyAuth(makeAuth({ accessToken: 'new' }))
+      const result = await service.getSpotifyAuth()
+      expect(result?.accessToken).toBe('new')
+    })
+
+    it('clearSpotifyAuth removes stored auth', async () => {
+      await service.saveSpotifyAuth(makeAuth())
+      await service.clearSpotifyAuth()
+      expect(await service.getSpotifyAuth()).toBeNull()
     })
   })
 

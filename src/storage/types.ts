@@ -4,7 +4,10 @@ import type { SpotifyAuth } from '../spotify/types'
 export interface StorageService {
   // Track overrides (user corrections to Spotify data)
   getOverrides(): Promise<TrackOverrides[]>
+  getOverride(spotifyId: string): Promise<TrackOverrides | null>
   saveOverrides(overrides: TrackOverrides[]): Promise<void>
+  saveOverride(override: TrackOverrides): Promise<void>
+  deleteOverride(spotifyId: string): Promise<void>
 
   // Sets
   getSets(): Promise<DJSet[]>

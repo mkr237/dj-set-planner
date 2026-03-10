@@ -32,8 +32,33 @@ export class LocalStorageService implements StorageService {
     return Promise.resolve(read<TrackOverrides[]>(KEYS.overrides, []))
   }
 
+  getOverride(spotifyId: string): Promise<TrackOverrides | null> {
+    const all = read<TrackOverrides[]>(KEYS.overrides, [])
+    return Promise.resolve(all.find(o => o.spotifyId === spotifyId) ?? null)
+  }
+
   saveOverrides(overrides: TrackOverrides[]): Promise<void> {
     write(KEYS.overrides, overrides)
+    return Promise.resolve()
+  }
+
+  saveOverride(override: TrackOverrides): Promise<void> {
+    const all = read<TrackOverrides[]>(KEYS.overrides, [])
+    const idx = all.findIndex(o => o.spotifyId === override.spotifyId)
+    if (idx >= 0) {
+      all[idx] = override
+    } else {
+      all.push(override)
+    }
+    write(KEYS.overrides, all)
+    return Promise.resolve()
+  }
+
+  deleteOverride(spotifyId: string): Promise<void> {
+    const all = read<TrackOverrides[]>(KEYS.overrides, []).filter(
+      o => o.spotifyId !== spotifyId
+    )
+    write(KEYS.overrides, all)
     return Promise.resolve()
   }
 
