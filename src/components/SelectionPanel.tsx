@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useAppContext } from '../context/AppContext'
-import { CSVImport } from './CSVImport'
 import { CandidatePanel } from './CandidatePanel'
 import { TrackEditModal } from './TrackEditModal'
 import type { ResolvedTrack } from '../types'
@@ -100,6 +99,18 @@ function FullLibraryView() {
 // SelectionPanel
 // ---------------------------------------------------------------------------
 
+function NoPlaylistsView() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-3 h-full px-8 text-center">
+      <div className="text-3xl text-slate-700 select-none leading-none">♫</div>
+      <div>
+        <p className="text-sm font-medium text-slate-400">No tracks loaded</p>
+        <p className="text-xs text-slate-600 mt-1">Enable one or more playlists to start building</p>
+      </div>
+    </div>
+  )
+}
+
 function LibraryLoadingView() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-3 h-full">
@@ -129,7 +140,7 @@ export function SelectionPanel() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {hasNoTracks && isFetchingPlaylists && <LibraryLoadingView />}
-      {hasNoTracks && !isFetchingPlaylists && <CSVImport />}
+      {hasNoTracks && !isFetchingPlaylists && <NoPlaylistsView />}
       {!hasNoTracks && setIsEmpty && <FullLibraryView />}
       {!hasNoTracks && !setIsEmpty && currentTrack && (
         <CandidatePanel currentTrack={currentTrack} />
