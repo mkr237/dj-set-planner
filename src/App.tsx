@@ -109,7 +109,7 @@ function AppShell() {
       {/* Header */}
       <header className="shrink-0 border-b border-border bg-surface-1 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold tracking-tight text-white">DJ Set Planner</span>
+          <img src="/logo.png" alt="DJ Set Planner" className="h-8 w-auto" />
         </div>
         <div className="flex items-center gap-1">
           <button
