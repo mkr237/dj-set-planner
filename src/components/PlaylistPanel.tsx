@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAppContext } from '../context/AppContext'
 import { spotifyService } from '../spotify'
 import { convertSpotifyTrack } from '../spotify/trackConverter'
@@ -62,6 +62,28 @@ export function PlaylistPanel() {
   const [syncError, setSyncError] = useState<string | null>(null)
   // Local set of playlist IDs currently being fetched (used for per-row spinners)
   const [fetchingIds, setFetchingIds] = useState<Set<string>>(new Set())
+
+  // On startup, auto-fetch tracks for any playlists that were enabled in the
+  // previous session. Runs once when playlists first load from storage.
+  const autoLoadedRef = useRef(false)
+  useEffect(() => {
+    if (autoLoadedRef.current || connectedPlaylists.length === 0) return
+    autoLoadedRef.current = true
+
+    const toFetch = connectedPlaylists.filter(
+      p => p.enabled && !playlistTracksCache[p.spotifyId]
+    )
+    Promise.all(
+      toFetch.map(p =>
+        loadPlaylist(p.spotifyId).catch(err => {
+          setSyncError(err instanceof Error ? err.message : `Failed to restore "${p.name}"`)
+        })
+      )
+    )
+  // loadPlaylist is redefined each render but is stable in behaviour;
+  // we intentionally run this only once so the dep array is minimal.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectedPlaylists])
 
   // ---------------------------------------------------------------------------
   // Fetch + cache tracks for one playlist
