@@ -91,6 +91,7 @@ const initialState: AppState = {
 export type AppAction =
   | { type: 'LOAD_OVERRIDES'; payload: TrackOverrides[] }
   | { type: 'SET_OVERRIDE'; payload: TrackOverrides }
+  | { type: 'REMOVE_OVERRIDE'; payload: string }             // spotifyId
   | { type: 'SET_CONSTRAINTS'; payload: MixConstraints }
   | { type: 'NEW_SET' }
   | { type: 'LOAD_SET'; payload: DJSet }
@@ -127,6 +128,20 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       const newOverrides = idx >= 0
         ? state.overrides.map((o, i) => (i === idx ? action.payload : o))
         : [...state.overrides, action.payload]
+      return {
+        ...state,
+        overrides: newOverrides,
+        tracks: recomputeTracks(
+          state.playlistTracksCache,
+          state.connectedPlaylists,
+          state.currentSet,
+          newOverrides,
+        ),
+      }
+    }
+
+    case 'REMOVE_OVERRIDE': {
+      const newOverrides = state.overrides.filter(o => o.spotifyId !== action.payload)
       return {
         ...state,
         overrides: newOverrides,
