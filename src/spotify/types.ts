@@ -40,18 +40,6 @@ export interface SpotifyTracksPage {
   total: number
 }
 
-export interface SpotifyApiAudioFeatures {
-  id: string
-  tempo: number   // BPM
-  key: number     // 0-11 pitch class, -1 if unknown
-  mode: number    // 0 = minor, 1 = major
-  energy: number  // 0.0-1.0
-}
-
-export interface SpotifyAudioFeaturesResponse {
-  audio_features: (SpotifyApiAudioFeatures | null)[]
-}
-
 export interface SpotifyApiPlaylist {
   id: string
   name: string
@@ -104,10 +92,4 @@ export interface SpotifyService {
    */
   getPlaylistTracks(playlistId: string): Promise<SpotifyApiTrack[]>
 
-  /**
-   * Fetch audio features (BPM, key, energy) for a batch of track IDs.
-   * Handles batching (max 100 per request) automatically.
-   * Returns null entries for tracks where features are unavailable.
-   */
-  getAudioFeatures(trackIds: string[]): Promise<(SpotifyApiAudioFeatures | null)[]>
 }

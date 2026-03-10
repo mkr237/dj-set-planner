@@ -33,24 +33,25 @@ interface SpotifyTrack {
   spotifyId: string;          // Spotify track ID (unique identifier)
   title: string;              // Track name
   artist: string;             // Artist name(s)
-  bpm: number;                // From Spotify audio features (tempo)
-  key: CamelotKey;            // Converted from Spotify's key + mode to Camelot
-  energy: EnergyLevel;        // Derived from Spotify energy: <0.4="Low", 0.4-0.7="Mid", >0.7="High"
-  genre?: string;             // From artist metadata
+  bpm: number | null;         // Always null — Spotify audio features API restricted for new apps (Nov 2024)
+  key: CamelotKey | null;     // Always null — same reason; set manually via override editor
+  energy: EnergyLevel;        // Always 'Unknown' — same reason; set manually via override editor
   albumArt?: string;          // URL to album artwork
   spotifyUri: string;         // For linking back to Spotify
   previewUrl?: string;        // 30s preview clip URL (if available)
 }
 ```
 
-### TrackOverrides (user corrections, stored locally)
+> **Note:** Spotify deprecated the audio features endpoint (`GET /v1/audio-features`) for apps created after November 2024. BPM, key, and energy are not available from the API. Users enter these values manually using the track override editor.
+
+### TrackOverrides (user-entered values, stored locally)
 
 ```typescript
 interface TrackOverrides {
   spotifyId: string;          // References SpotifyTrack.spotifyId
-  bpm?: number;               // User-corrected BPM (overrides Spotify)
-  key?: CamelotKey;           // User-corrected key (overrides Spotify)
-  energy?: EnergyLevel;       // User-corrected energy (overrides Spotify default)
+  bpm?: number;               // User-entered BPM
+  key?: CamelotKey;           // User-entered Camelot key
+  energy?: EnergyLevel;       // User-entered energy level
   notes?: string;             // DJ notes
 }
 ```
@@ -62,63 +63,18 @@ interface ResolvedTrack {
   spotifyId: string;          // Primary key
   title: string;              // From Spotify (not overridable)
   artist: string;             // From Spotify (not overridable)
-  bpm: number;                // Override if set, otherwise Spotify
-  key: CamelotKey;            // Override if set, otherwise Spotify
-  energy: EnergyLevel;        // Override if set, otherwise derived from Spotify
-  genre?: string;             // From Spotify
+  bpm: number | null;         // From override if set, otherwise null
+  key: CamelotKey | null;     // From override if set, otherwise null
+  energy: EnergyLevel;        // From override if set, otherwise 'Unknown'
   albumArt?: string;          // From Spotify
   spotifyUri: string;         // From Spotify
   previewUrl?: string;        // From Spotify
   notes?: string;             // From override
-  hasOverrides: {             // Flags indicating which fields are overridden
+  hasOverrides: {             // Flags indicating which fields have been manually set
     bpm: boolean;
     key: boolean;
     energy: boolean;
   };
-}
-```
-
-### Spotify Key → Camelot Conversion
-
-Spotify returns key (0-11, pitch class) and mode (0=minor, 1=major). Map to Camelot:
-
-```typescript
-// Spotify key + mode → Camelot notation
-const CAMELOT_MAP: Record<string, CamelotKey> = {
-  "0-1": "8B",   // C major
-  "1-1": "3B",   // C#/Db major
-  "2-1": "10B",  // D major
-  "3-1": "5B",   // D#/Eb major
-  "4-1": "12B",  // E major
-  "5-1": "7B",   // F major
-  "6-1": "2B",   // F#/Gb major
-  "7-1": "9B",   // G major
-  "8-1": "4B",   // G#/Ab major
-  "9-1": "11B",  // A major
-  "10-1": "6B",  // A#/Bb major
-  "11-1": "1B",  // B major
-  "0-0": "5A",   // C minor
-  "1-0": "12A",  // C#/Db minor
-  "2-0": "7A",   // D minor
-  "3-0": "2A",   // D#/Eb minor
-  "4-0": "9A",   // E minor
-  "5-0": "4A",   // F minor
-  "6-0": "11A",  // F#/Gb minor
-  "7-0": "6A",   // G minor
-  "8-0": "1A",   // G#/Ab minor
-  "9-0": "8A",   // A minor
-  "10-0": "3A",  // A#/Bb minor
-  "11-0": "10A", // B minor
-};
-```
-
-### Energy Derivation
-
-```typescript
-function deriveEnergy(spotifyEnergy: number): EnergyLevel {
-  if (spotifyEnergy < 0.4) return "Low";
-  if (spotifyEnergy <= 0.7) return "Mid";
-  return "High";
 }
 ```
 
@@ -291,7 +247,6 @@ interface SpotifyService {
   isAuthenticated(): boolean;
   getUserPlaylists(): Promise<SpotifyPlaylist[]>;
   getPlaylistTracks(playlistId: string): Promise<SpotifyTrack[]>;
-  getAudioFeatures(trackIds: string[]): Promise<SpotifyAudioFeatures[]>;
   refreshToken(): Promise<void>;
 }
 ```
@@ -418,7 +373,7 @@ Each phase is a self-contained milestone. Complete one before starting the next.
 | 7.1 | Spotify app registration + OAuth 2.0 PKCE flow | "Set up Spotify OAuth 2.0 with PKCE for a client-side app. Create a SpotifyService class that handles authentication, token storage, and token refresh. Use the Spotify Web API." |
 | 7.2 | Spotify connect screen | "When the user is not authenticated, show a full-screen Spotify connect prompt (replacing the three-panel layout). After successful auth, transition to the three-panel layout." |
 | 7.3 | Playlist panel (left) | "Replace the placeholder in the PlaylistPanel with the user's actual Spotify playlists. Each playlist shows its name, track count, and a checkbox to enable/disable. Include 'select all' / 'deselect all' at the top and a sync button in the header." |
-| 7.4 | Track + audio features fetching | "For each enabled playlist, fetch all tracks and their audio features (BPM, key, energy) from the Spotify API. Convert Spotify key+mode to Camelot notation. Derive energy level from Spotify's energy value (< 0.4 = Low, 0.4–0.7 = Mid, > 0.7 = High). Toggling a playlist checkbox immediately updates the candidate pool in the centre panel." |
+| 7.4 | Track fetching | "For each enabled playlist, fetch all tracks from the Spotify API. BPM, key, and energy default to null/'Unknown' — the Spotify audio features endpoint is restricted for new apps (deprecated November 2024). Users enter these values manually via the track override editor. Toggling a playlist checkbox immediately updates the candidate pool in the centre panel." |
 | 7.5 | Updated data model + type definitions | "Replace the Track interface with SpotifyTrack, TrackOverrides, and ResolvedTrack. Update all components to use ResolvedTrack. Create a resolveTrack utility that merges Spotify data with any stored overrides." |
 | 7.6 | Track override editor | "Add the ability to click on any track's BPM, key, or energy value and edit it inline. Store the override in localStorage via the StorageService. Show a visual indicator on fields that have been overridden. Allow clearing overrides to revert to Spotify values." |
 | 7.7 | Remove CSV import | "Remove the CSV import component, Papaparse dependency, and CSV parsing utility. The CandidatePanel empty state should now say 'Enable one or more playlists to start building' when no playlists are checked." |

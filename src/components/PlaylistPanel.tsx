@@ -3,7 +3,6 @@ import { useAppContext } from '../context/AppContext'
 import { spotifyService } from '../spotify'
 import { convertSpotifyTrack } from '../spotify/trackConverter'
 import type { ConnectedPlaylist, SpotifyTrack } from '../types'
-import type { SpotifyApiAudioFeatures } from '../spotify/types'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -11,15 +10,7 @@ import type { SpotifyApiAudioFeatures } from '../spotify/types'
 
 async function fetchTracksForPlaylist(playlistId: string): Promise<SpotifyTrack[]> {
   const rawTracks = await spotifyService.getPlaylistTracks(playlistId)
-  const ids = rawTracks.map(t => t.id!)
-  const features = await spotifyService.getAudioFeatures(ids)
-
-  // Build a lookup map: trackId → features (some may be null)
-  const featuresById = new Map<string, SpotifyApiAudioFeatures>(
-    (features.filter(Boolean) as SpotifyApiAudioFeatures[]).map(f => [f.id, f])
-  )
-
-  return rawTracks.map(t => convertSpotifyTrack(t, featuresById.get(t.id!) ?? null))
+  return rawTracks.map(t => convertSpotifyTrack(t))
 }
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ import { SPOTIFY_CONFIG } from './config'
 import type {
   SpotifyAuth, SpotifyService, SpotifyTokenResponse,
   SpotifyPlaylistsPage, SpotifyTracksPage,
-  SpotifyApiTrack, SpotifyApiAudioFeatures, SpotifyAudioFeaturesResponse,
+  SpotifyApiTrack,
 } from './types'
 import type { ConnectedPlaylist } from '../types'
 
@@ -243,39 +243,6 @@ export class SpotifyServiceImpl implements SpotifyService {
     }
 
     return tracks
-  }
-
-  async getAudioFeatures(
-    trackIds: string[]
-  ): Promise<(SpotifyApiAudioFeatures | null)[]> {
-    if (trackIds.length === 0) return []
-
-    const features: (SpotifyApiAudioFeatures | null)[] = []
-
-    // Spotify's audio-features endpoint accepts max 100 IDs per request
-    for (let i = 0; i < trackIds.length; i += 100) {
-      const batch = trackIds.slice(i, i + 100)
-      const token = await this.getAccessToken()
-      const response = await fetch(
-        `https://api.spotify.com/v1/audio-features?ids=${batch.join(',')}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      if (response.status === 403) {
-        // Audio features are restricted for this Spotify app tier — return nulls
-        features.push(...batch.map(() => null))
-        continue
-      }
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch audio features (HTTP ${response.status})`)
-      }
-
-      const data = (await response.json()) as SpotifyAudioFeaturesResponse
-      features.push(...data.audio_features)
-    }
-
-    return features
   }
 
   // -------------------------------------------------------------------------
