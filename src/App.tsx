@@ -6,46 +6,59 @@ import { SetHeader } from './components/SetHeader'
 import { SetTimeline } from './components/SetTimeline'
 import { SelectionPanel } from './components/SelectionPanel'
 import { PlaylistPanel } from './components/PlaylistPanel'
+import { SpotifyConnectScreen } from './components/SpotifyConnectScreen'
 import { ConstraintModal } from './components/ConstraintModal'
 import { SavedSetsDrawer } from './components/SavedSetsDrawer'
 import { PerformanceMode } from './components/PerformanceMode'
 
 type AppMode = 'edit' | 'performance'
 
+/**
+ * Detects and processes the Spotify OAuth callback on mount.
+ * Returns { error, completed, processing } so callers can show appropriate UI.
+ */
 function useSpotifyCallback() {
-  const [callbackError, setCallbackError] = useState<string | null>(null)
+  const isCallback = window.location.pathname === '/callback'
+  const [error, setError] = useState<string | null>(null)
+  const [completed, setCompleted] = useState(false)
+  const [processing, setProcessing] = useState(isCallback)
 
   useEffect(() => {
-    if (window.location.pathname !== '/callback') return
+    if (!isCallback) return
 
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
     const state = params.get('state')
-    const error = params.get('error')
+    const callbackError = params.get('error')
 
     // Clean the URL immediately so a refresh doesn't re-run the callback
     window.history.replaceState({}, '', '/')
 
-    if (error) {
-      setCallbackError(`Spotify login was denied: ${error}`)
+    if (callbackError) {
+      setError(`Spotify login was denied: ${callbackError}`)
+      setProcessing(false)
       return
     }
 
     if (!code || !state) {
-      setCallbackError('Invalid callback — missing code or state parameter')
+      setError('Invalid callback — missing code or state parameter')
+      setProcessing(false)
       return
     }
 
     spotifyService
       .handleCallback(code, state)
-      .catch(err =>
-        setCallbackError(
-          err instanceof Error ? err.message : 'Spotify authentication failed'
-        )
-      )
-  }, [])
+      .then(() => {
+        setCompleted(true)
+        setProcessing(false)
+      })
+      .catch(err => {
+        setError(err instanceof Error ? err.message : 'Spotify authentication failed')
+        setProcessing(false)
+      })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return callbackError
+  return { error, completed, processing }
 }
 
 function AppShell() {
@@ -53,13 +66,41 @@ function AppShell() {
   const [mode, setMode] = useState<AppMode>('edit')
   const [showConstraints, setShowConstraints] = useState(false)
   const [showDrawer, setShowDrawer] = useState(false)
-  const callbackError = useSpotifyCallback()
 
-  const hasSetTracks = (state.currentSet?.tracks.length ?? 0) > 0
+  const { error: callbackError, completed: callbackCompleted, processing: callbackProcessing } =
+    useSpotifyCallback()
+
+  // Track auth state reactively — re-check after a successful callback
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    spotifyService.isAuthenticated()
+  )
+  useEffect(() => {
+    if (callbackCompleted) setIsAuthenticated(spotifyService.isAuthenticated())
+  }, [callbackCompleted])
+
+  // --- Unauthenticated states ---
+
+  // Brief loading screen while the callback token exchange is in flight
+  if (callbackProcessing) {
+    return (
+      <div className="h-screen bg-surface-0 flex items-center justify-center gap-3">
+        <span className="inline-block w-4 h-4 border-2 border-slate-600 border-t-slate-300 rounded-full animate-spin" />
+        <span className="text-slate-400 text-sm">Connecting to Spotify…</span>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <SpotifyConnectScreen error={callbackError} />
+  }
+
+  // --- Authenticated: edit / performance modes ---
 
   if (mode === 'performance') {
     return <PerformanceMode onExit={() => setMode('edit')} />
   }
+
+  const hasSetTracks = (state.currentSet?.tracks.length ?? 0) > 0
 
   return (
     <div className="h-screen bg-surface-0 text-slate-100 flex flex-col overflow-hidden">
@@ -91,15 +132,18 @@ function AppShell() {
           >
             ⚙
           </button>
+          <button
+            onClick={() => {
+              spotifyService.logout()
+              setIsAuthenticated(false)
+            }}
+            title="Disconnect Spotify"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-surface-3 transition-colors text-sm"
+          >
+            ⏻
+          </button>
         </div>
       </header>
-
-      {/* Spotify callback error banner */}
-      {callbackError && (
-        <div className="shrink-0 bg-red-900/60 border-b border-red-700 px-6 py-2 text-xs text-red-300">
-          {callbackError}
-        </div>
-      )}
 
       {/* Three-panel layout */}
       <div className="flex flex-1 overflow-hidden">
