@@ -11,7 +11,7 @@ export const SPOTIFY_CONFIG = {
   clientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID as string,
   redirectUri:
     (import.meta.env.VITE_SPOTIFY_REDIRECT_URI as string | undefined) ??
-    'http://localhost:5173/callback',
+    'http://127.0.0.1:5173/callback',
 
   scopes: [
     'playlist-read-private',

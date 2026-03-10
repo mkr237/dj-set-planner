@@ -1,4 +1,4 @@
-import type { DJSet, MixConstraints, Track } from '../types'
+import type { DJSet, MixConstraints, Track, ConnectedPlaylist } from '../types'
 import type { SpotifyAuth } from '../spotify/types'
 
 export interface StorageService {
@@ -12,6 +12,9 @@ export interface StorageService {
 
   getConstraints(): Promise<MixConstraints>
   saveConstraints(constraints: MixConstraints): Promise<void>
+
+  getPlaylists(): Promise<ConnectedPlaylist[]>
+  savePlaylists(playlists: ConnectedPlaylist[]): Promise<void>
 
   getSpotifyAuth(): Promise<SpotifyAuth | null>
   saveSpotifyAuth(auth: SpotifyAuth): Promise<void>

@@ -37,3 +37,11 @@ export interface MixConstraints {
   maxCamelotTier: number
   energyFilter: EnergyLevel[] | 'any'
 }
+
+export interface ConnectedPlaylist {
+  spotifyId: string
+  name: string
+  trackCount: number
+  enabled: boolean
+  lastSynced: string // ISO timestamp
+}

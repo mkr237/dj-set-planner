@@ -6,7 +6,7 @@ import {
   type ReactNode,
   type Dispatch,
 } from 'react'
-import type { Track, DJSet, MixConstraints, SetTrack } from '../types'
+import type { Track, DJSet, MixConstraints, SetTrack, ConnectedPlaylist } from '../types'
 import { storage } from '../storage'
 
 // ---------------------------------------------------------------------------
@@ -17,6 +17,7 @@ export interface AppState {
   tracks: Track[]
   currentSet: DJSet | null
   constraints: MixConstraints
+  connectedPlaylists: ConnectedPlaylist[]
 }
 
 const DEFAULT_CONSTRAINTS: MixConstraints = {
@@ -29,6 +30,7 @@ const initialState: AppState = {
   tracks: [],
   currentSet: null,
   constraints: DEFAULT_CONSTRAINTS,
+  connectedPlaylists: [],
 }
 
 // ---------------------------------------------------------------------------
@@ -42,9 +44,12 @@ export type AppAction =
   | { type: 'NEW_SET' }
   | { type: 'LOAD_SET'; payload: DJSet }
   | { type: 'RENAME_SET'; payload: string }
-  | { type: 'ADD_TRACK_TO_SET'; payload: string }      // trackId
-  | { type: 'REMOVE_TRACK_FROM_SET'; payload: number } // position index
+  | { type: 'ADD_TRACK_TO_SET'; payload: string }            // trackId
+  | { type: 'REMOVE_TRACK_FROM_SET'; payload: number }       // position index
   | { type: 'REORDER_SET_TRACKS'; payload: SetTrack[] }
+  | { type: 'SET_PLAYLISTS'; payload: ConnectedPlaylist[] }
+  | { type: 'TOGGLE_PLAYLIST'; payload: string }             // spotifyId
+  | { type: 'SET_ALL_PLAYLISTS_ENABLED'; payload: boolean }
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -139,6 +144,26 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       }
     }
 
+    case 'SET_PLAYLISTS':
+      return { ...state, connectedPlaylists: action.payload }
+
+    case 'TOGGLE_PLAYLIST':
+      return {
+        ...state,
+        connectedPlaylists: state.connectedPlaylists.map(p =>
+          p.spotifyId === action.payload ? { ...p, enabled: !p.enabled } : p
+        ),
+      }
+
+    case 'SET_ALL_PLAYLISTS_ENABLED':
+      return {
+        ...state,
+        connectedPlaylists: state.connectedPlaylists.map(p => ({
+          ...p,
+          enabled: action.payload,
+        })),
+      }
+
     default:
       return state
   }
@@ -162,14 +187,17 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState)
 
-  // Load persisted tracks and constraints on mount
+  // Load persisted data on mount
   useEffect(() => {
-    Promise.all([storage.getTracks(), storage.getConstraints()]).then(
-      ([tracks, constraints]) => {
-        dispatch({ type: 'SET_TRACKS', payload: tracks })
-        dispatch({ type: 'SET_CONSTRAINTS', payload: constraints })
-      }
-    )
+    Promise.all([
+      storage.getTracks(),
+      storage.getConstraints(),
+      storage.getPlaylists(),
+    ]).then(([tracks, constraints, playlists]) => {
+      dispatch({ type: 'SET_TRACKS', payload: tracks })
+      dispatch({ type: 'SET_CONSTRAINTS', payload: constraints })
+      dispatch({ type: 'SET_PLAYLISTS', payload: playlists })
+    })
   }, [])
 
   // Persist tracks whenever they change
@@ -181,6 +209,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     storage.saveConstraints(state.constraints)
   }, [state.constraints])
+
+  // Persist playlists whenever they change
+  useEffect(() => {
+    storage.savePlaylists(state.connectedPlaylists)
+  }, [state.connectedPlaylists])
 
   return (
     <AppContext.Provider value={{ state, dispatch }}>

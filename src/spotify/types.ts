@@ -19,6 +19,20 @@ export interface SpotifyTokenResponse {
   token_type: string
 }
 
+export interface SpotifyApiPlaylist {
+  id: string
+  name: string
+  // Spotify returns null for tracks on some auto-generated / algorithmic playlists
+  tracks: { total: number } | null
+}
+
+export interface SpotifyPlaylistsPage {
+  // Spotify can return null entries in the items array
+  items: (SpotifyApiPlaylist | null)[]
+  next: string | null
+  total: number
+}
+
 // ---------------------------------------------------------------------------
 // Service interface
 // ---------------------------------------------------------------------------
@@ -44,4 +58,10 @@ export interface SpotifyService {
 
   /** Clear all stored auth tokens. */
   logout(): void
+
+  /**
+   * Fetch all playlists owned or followed by the current user.
+   * Handles Spotify pagination automatically.
+   */
+  getUserPlaylists(): Promise<import('../types').ConnectedPlaylist[]>
 }
